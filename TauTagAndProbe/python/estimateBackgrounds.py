@@ -16,8 +16,8 @@ parser.add_argument('--output-dy-mc', required=True, type=str, help="output file
 parser.add_argument('--mode', required=True, type=str, help="subtract backgrounds from data or add backgrounds to ZTT MC")
 args = parser.parse_args()
 
-if not(mode == "subtract-from-data" or mode == "add-to-dy-mc"):
-    raise ValueError("Invalid configuration parameter mode = '%s' !!" % mode)
+if not(args.mode == "subtract-from-data" or args.mode == "add-to-dy-mc"):
+    raise ValueError("Invalid configuration parameter mode = '%s' !!" % args.mode)
 
 df_input = ROOT.RDataFrame('events', args.input)
 
@@ -75,10 +75,10 @@ def final_weight_data(selection, type, weight):
     else:
         raise ValueError("Invalid function arguments: selection = '%s', type = '%s' !!" % (selection, type))
 
-if mode == "subtract-from-data":
+if args.mode == "subtract-from-data":
     df_output_data = df_input.Filter("(selection == 'OS_low_mT' && type == 'data') || (selection == 'SS_low_mT') || (selection == 'OS_low_mT' && (type == 'zmm-mc' || type == 'w-jets-mc' || type == 'ttbar-mc'))")
     df_output_data.Define('final_weight', final_weight_data, { "selection", "type", "weight" })
-elif mode == "add-to-dy-mc":
+elif args.mode == "add-to-dy-mc":
     df_output_data = df_input.Filter("selection == 'OS_low_mT' && type == 'data'")
 
 # step 5: build RDataFrame object for 'dy-mc'
@@ -101,9 +101,9 @@ def final_weight_dy_mc(selection, type, weight):
     else:
         raise ValueError("Invalid function arguments: selection = '%s', type = '%s' !!" % (selection, type))
 
-if mode == "subtract-from-data":
+if args.mode == "subtract-from-data":
     df_output_dy_mc = df_input.Filter("selection == 'OS_low_mT' && type == 'ztt-mc'")
-elif mode == "add-to-dy-mc":
+elif args.mode == "add-to-dy-mc":
     df_output_dy_mc = df_input.Filter("(selection == 'OS_low_mT' && type == 'ztt-mc') || (selection == 'SS_low_mT') || (selection == 'OS_low_mT' && (type == 'zmm-mc' || type == 'w-jets-mc' || type == 'ttbar-mc')")
     df_output_dy_mc.Define('final_weight', final_weight_dy_mc, { "selection", "type", "weight" })
 
