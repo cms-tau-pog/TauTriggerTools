@@ -56,7 +56,7 @@ class FitResults:
         yerr = np.maximum(eff.y_error_low, eff.y_error_high)
 
         self.pt_start_flat = eff.x[-1]
-        best_chi2_ndof = math.inf
+        best_chi2_ndof = float('inf')
         for n in range(1, N):
             flat_eff, residuals, _, _, _ = np.polyfit(eff.x[N-n-1:], eff.y[N-n-1:], 0, w=1/yerr[N-n-1:], full=True)
             chi2_ndof = residuals[0] / n

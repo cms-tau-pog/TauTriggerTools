@@ -126,7 +126,7 @@
         "selection_etau": { "l1Tau_pt": 26, "l1Tau_hwIso": 0, "hltObj_pt": 30 },
         "target_channels": [ "etau", "mutau" ],
         "min_run": 317509,
-        "sample_types": [ "data", "mc" ]
+        "sample_types": [ "data", "ztt_mc", "zmm_mc","w_mc", "ttbar_mc", "qcd" ]
     },
     "HLT_IsoMu20_eta2p1_MediumChargedIsoPFTauHPS27_eta2p1_CrossL1_v": {
         "filters": [
@@ -171,7 +171,7 @@
         "leg_types": [ "mu", "tau" ],
         "target_channels": [ "ditau" ],
         "min_run": 317509,
-        "sample_types": [ "data", "mc" ]
+        "sample_types": [ "data", "ztt_mc", "zmm_mc","w_mc", "ttbar_mc", "qcd" ]
     },
     "HLT_IsoMu24_eta2p1_TightChargedIsoPFTauHPS35_Trk1_eta2p1_Reg_CrossL1_v": {
         "filters": [
