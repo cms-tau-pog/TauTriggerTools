@@ -18,7 +18,11 @@ parser.add_argument('--decay-modes', required=False, type=str, default='all,0,1,
 parser.add_argument('--working-points', required=False, type=str,
                     default='VVVLoose,VVLoose,VLoose,Loose,Medium,Tight,VTight,VVTight',
                     help="working points to process")
+parser.add_argument('--branchname-weight', required=True, type=str, help="branchname for event weights")
 args = parser.parse_args()
+
+if not(args.branchname_weight == "weight" or args.branchname_weight == "final_weight"):
+    raise ValueError("Invalid configuration parameter branchname-weight = '%s' !!" % args.branchname_weight)
 
 path_prefix = '' if 'TauTriggerTools' in os.getcwd() else 'TauTriggerTools/'
 sys.path.insert(0, path_prefix + 'Common/python')
@@ -89,8 +93,8 @@ def CreateHistograms(input_file, channels, decay_modes, discr_name, working_poin
                 df_ch = df_wp.Filter('pass_{} > 0.5'.format(channel))
                 for model_name, hist_model in hist_models.items():
                     turn_on = TurnOnData()
-                    turn_on.hist_total = df_wp.Histo1D(hist_model, var, 'weight')
-                    turn_on.hist_passed = df_ch.Histo1D(hist_model, var, 'weight')
+                    turn_on.hist_total = df_wp.Histo1D(hist_model, var, args.branchname_weight)
+                    turn_on.hist_passed = df_ch.Histo1D(hist_model, var, args.branchname_weight)
                     turnOn_data[dm][wp][channel][model_name] = turn_on
 
     for dm in decay_modes:
