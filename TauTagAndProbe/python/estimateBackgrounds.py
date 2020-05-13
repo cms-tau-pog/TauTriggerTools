@@ -19,7 +19,12 @@ args = parser.parse_args()
 if not(args.mode == "subtract-from-data" or args.mode == "add-to-dy-mc"):
     raise ValueError("Invalid configuration parameter mode = '%s' !!" % args.mode)
 
-df_input = ROOT.RDataFrame('events', args.input)
+ROOT.gROOT.SetBatch(True)
+
+from TauTriggerTools.Common.AnalysisTools import ListToStdVector
+input_vec = ListToStdVector(args.input)
+
+df_input = ROOT.RDataFrame('events', input_vec)
 
 df_output_data = ROOT.RDataFrame('events')
 df_output_dy_mc = ROOT.RDataFrame('events')
