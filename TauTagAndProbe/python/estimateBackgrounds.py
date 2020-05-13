@@ -21,11 +21,9 @@ if not(args.mode == "subtract-from-data" or args.mode == "add-to-dy-mc"):
 
 ROOT.gROOT.SetBatch(True)
 
-
 path_prefix = '' if 'TauTriggerTools' in os.getcwd() else 'TauTriggerTools/'
 sys.path.insert(0, path_prefix + 'Common/python')
 from AnalysisTools import *
-
 
 input_vec = ListToStdVector(args.input)
 
