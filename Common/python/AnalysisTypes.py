@@ -33,3 +33,17 @@ class DiscriminatorWP:
     VTight = 6
     VVTight = 7
     VVVTight = 8
+
+class Process:
+    data = 0
+    ztt_mc = 1
+    zmm_mc = 2
+    w_mc = 3
+    ttbar_mc = 4
+    qcd = 5
+
+class SideBand:
+    OS_low_mT = 0
+    OS_high_mT = 1
+    SS_low_mT = 2 
+    SS_high_mT = 3
