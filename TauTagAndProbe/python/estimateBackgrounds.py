@@ -26,8 +26,8 @@ input_vec = ListToStdVector(args.input)
 
 df_input = ROOT.RDataFrame('events', input_vec)
 
-df_output_data = ROOT.RDataFrame('events')
-df_output_dy_mc = ROOT.RDataFrame('events')
+df_output_data  = None
+df_output_dy_mc = None
 
 processes = [ "data", "ztt-mc", "zmm-mc", "w-mc", "ttbar-mc" ]
 
