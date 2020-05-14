@@ -22,13 +22,16 @@ if not(args.mode == "subtract-from-data" or args.mode == "add-to-dy-mc"):
 path_prefix = '' if 'TauTriggerTools' in os.getcwd() else 'TauTriggerTools/'
 sys.path.insert(0, path_prefix + 'Common/python')
 from AnalysisTools import *
-#ROOT.ROOT.EnableImplicitMT(4)
+ROOT.ROOT.EnableImplicitMT(4)
 ROOT.gROOT.SetBatch(True)
 ROOT.gInterpreter.Declare('#include "{}TauTagAndProbe/interface/PyInterface.h"'.format(path_prefix))
 
 input_vec = ListToStdVector(args.input)
 
 df_input = ROOT.RDataFrame('events', input_vec)
+print "df_input = ", df_input
+print("sum = %1.2f (%i)" % (df_input.Sum("weight").GetValue(), df_input.Count().GetValue()))
+print("")
 
 df_output_data  = None
 df_output_dy_mc = None
@@ -72,6 +75,7 @@ for process in processes:
     print("sum_SS_high_mT['%s'] = %1.2f (%i)" % (process, sum_SS_high_mT[process].GetValue(), df_SS_high_mT_process.Count().GetValue()))
 sf_w_mc_SS = (sum_SS_high_mT['data'].GetValue() - (sum_SS_high_mT["ztt-mc"].GetValue() + sum_SS_high_mT['zmm-mc'].GetValue() + sum_SS_high_mT['ttbar-mc'].GetValue()))/sum_SS_high_mT['w-mc'].GetValue()
 print("sf_w_mc_SS = %1.2f" % sf_w_mc_SS)
+print("")
 
 # step 2: determine QCD multijet background in SS region 
 #        (Note: QCD multijet background in SS high mT sideband assumed to be negligible)
@@ -81,6 +85,7 @@ for process in processes:
     df_SS_low_mT_process = df_SS_low_mT.Filter("type == %i" % get_type(process))
     sum_SS_low_mT[process] = df_SS_low_mT_process.Sum("weight")
     print("sum_SS_low_mT['%s'] = %1.2f (%i)" % (process, sum_SS_low_mT[process].GetValue(), df_SS_low_mT_process.Count().GetValue()))
+print("")
 
 # define SS->OS extrapolation factor for QCD multijet background 
 sf_qcd_SS_to_OS = 1.
@@ -95,6 +100,7 @@ for process in processes:
     print("sum_OS_high_mT['%s'] = %1.2f (%i)" % (process, sum_OS_high_mT[process].GetValue(), df_OS_high_mT_process.Count().GetValue()))
 sf_w_mc_OS = (sum_OS_high_mT['data'].GetValue() - (sum_OS_high_mT["ztt-mc"].GetValue() + sum_OS_high_mT['zmm-mc'].GetValue() + sum_OS_high_mT['ttbar-mc'].GetValue()))/sum_OS_high_mT['w-mc'].GetValue()
 print("sf_w_mc_OS = %1.2f" % sf_w_mc_OS)
+print("")
 
 # step 4: print event yields in "signal" region for input RDataFrame objects
 df_OS_low_mT = df_input.Filter("selection == %i" % selection_OS_low_mT)
@@ -103,12 +109,13 @@ for process in processes:
     df_OS_low_mT_process = df_OS_low_mT.Filter("type == %i" % get_type(process))
     sum_OS_low_mT[process] = df_OS_low_mT_process.Sum("weight")
     print("sum_OS_low_mT['%s'] = %1.2f (%i)" % (process, sum_OS_low_mT[process].GetValue(), df_OS_low_mT_process.Count().GetValue()))
+print("")
 
 # step 5: build RDataFrame object for 'data'
 final_weight_data = ROOT.final_weight_data.Initialize(sf_qcd_SS_to_OS, sf_w_mc_OS, sf_w_mc_SS)
 if args.mode == "subtract-from-data":
     df_output_data = df_input.Filter("(selection == %i && type == %i) || (selection == %i) || (selection == %i && (type == %i || type == %i || type == %i))" % (selection_OS_low_mT, type_data, selection_SS_low_mT, selection_OS_low_mT, type_zmm_mc, type_w_mc, type_ttbar_mc))
-    df_output_data.Define('final_weight', "final_weight_data::GetDefault().operator()(selection, type, weight)")
+    df_output_data = df_output_data.Define("final_weight", "final_weight_data::GetDefault().operator()(selection, type, weight)")
 elif args.mode == "add-to-dy-mc":
     df_output_data = df_input.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_data))
 
@@ -118,14 +125,24 @@ if args.mode == "subtract-from-data":
     df_output_dy_mc = df_input.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_ztt_mc))
 elif args.mode == "add-to-dy-mc":
     df_output_dy_mc = df_input.Filter("(selection == %i && type == %i) || (selection == %i) || (selection == %i && (type == %i || type == %i || type == %i)" % (selection_OS_low_mT, type_ztt_mc, selection_SS_low_mT, selection_OS_low_mT, type_zmm-mc, type_w_mc, type_ttbar_mc))
-    df_output_dy_mc.Define('final_weight', "final_weight_dy_mc::GetDefault().operator()(selection, type, weight)")
+    df_output_dy_mc = df_output_dy_mc.Define("final_weight", "final_weight_dy_mc::GetDefault().operator()(selection, type, weight)")
 
 # step 7: print data and dy-mc event yields in "signal" region for output RDataFrame objects
 print "df_output_data = ", df_output_data
-sum_OS_low_mT_data = df_output_data.Sum("weight")
+weight_data = None
+if args.mode == "subtract-from-data":
+    weight_data = "final_weight"
+else:
+    weight_data = "weight"
+sum_OS_low_mT_data = df_output_data.Sum(weight_data)
 print("sum_OS_low_mT_data = %1.2f (%i)" % (sum_OS_low_mT_data.GetValue(), df_output_data.Count().GetValue()))
 print "df_output_dy_mc = ", df_output_dy_mc
-sum_OS_low_mT_dy_mc = df_output_dy_mc.Sum("weight")
+weight_dy_mc = None
+if args.mode == "add-to-dy-mc":
+    weight_dy_mc = "final_weight"
+else:
+    weight_dy_mc = "weight"
+sum_OS_low_mT_dy_mc = df_output_dy_mc.Sum(weight_dy_mc)
 print("sum_OS_low_mT_dy_mc = %1.2f (%i)" % (sum_OS_low_mT_dy_mc.GetValue(), df_output_dy_mc.Count().GetValue()))
 
 # step 8: write RDataFrame objects to output files
