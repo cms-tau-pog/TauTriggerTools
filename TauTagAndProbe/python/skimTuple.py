@@ -31,10 +31,6 @@ ROOT.ROOT.EnableImplicitMT(4)
 ROOT.gROOT.SetBatch(True)
 ROOT.gInterpreter.Declare('#include "{}TauTagAndProbe/interface/PyInterface.h"'.format(path_prefix))
 
-
-def RetValue(value):
-    return value
-
 if args.type not in ["data", "ztt_mc", "zmm_mc", "w_mc", "ttbar_mc"]:
     raise RuntimeError("Invalid sample type")
 
@@ -121,18 +117,26 @@ if selection_id == TauSelection.DeepTau:
 
 if args.type == 'data':
      df = df.Define('weight', "1.")
+     df = df.Define('lumiScale', str(LumiScale)) 
+     df = df.Define('puWeight', "-10.0")
+     df = df.Define("genEventWeight_signOnly","0.")
 else:
  if args.type == 'ztt_mc':
        df = df.Filter('tau_gen_match == 5')
  elif args.type == 'zmm_mc':
        df = df.Filter('tau_gen_match != 5')
- df = df.Define('lumiScale', str(LumiScale)) 
- df = df.Define('puWeight', "PileUpWeightProvider::GetDefault().GetWeight(npu)")     
- df = df.Define('weight', "puWeight * genEventWeight * lumiScale")
-
+ df = df.Define('puWeight', "PileUpWeightProvider::GetDefault().GetWeight(npu)")
+ Total_PU_Wt = float(df.Sum("puWeight").GetValue()) 
+ df = df.Define('lumiScale_num', str(LumiScale)) # LumiScale = x-sec * Integ. Lumi.
+ df = df.Define('genEventWeight_signOnly', "genEventWeight >= 0. ? 1.0 : -1.0")
+ N_eff = float(df.Sum("genEventWeight_signOnly").GetValue())
+ df = df.Define('lumiScale', ("lumiScale_num / %f" % (N_eff))) 
+ df = df.Define('weight', ("(puWeight * genEventWeight_signOnly * lumiScale) / %f" % (Total_PU_Wt)))
+ 
 skimmed_branches = [
     'type', 'selection', 
-    'tau_pt', 'tau_eta', 'tau_phi', 'tau_mass', 'tau_charge', 'tau_decayMode', 'weight',
+    'lumiScale', 'genEventWeight', "genEventWeight_signOnly",
+    'tau_pt', 'tau_eta', 'tau_phi', 'tau_mass', 'tau_charge', 'tau_decayMode', 'weight', 
     'byIsolationMVArun2017v2DBoldDMwLT2017', 'byDeepTau2017v2p1VSjet'
 ]
 
