@@ -18,15 +18,15 @@ parser.add_argument('--decay-modes', required=False, type=str, default='all,0,1,
 parser.add_argument('--working-points', required=False, type=str,
                     default='VVVLoose,VVLoose,VLoose,Loose,Medium,Tight,VTight,VVTight',
                     help="working points to process")
-parser.add_argument('--branchname-weight-data', required=True, type=str, help="branchname for event weights in data")
-parser.add_argument('--branchname-weight-dy-mc', required=True, type=str, help="branchname for event weights in dy-mc")
+parser.add_argument('--branchname-weight-data', required=True, type=str, help="branchname for event weights for data input")
+parser.add_argument('--branchname-weight-dy-mc', required=True, type=str, help="branchname for event weights for DY MC input")
+
 args = parser.parse_args()
 
 if not(args.branchname_weight_data == "weight" or args.branchname_weight_data == "final_weight"):
     raise ValueError("Invalid configuration parameter branchname-weight-data = '%s' !!" % args.branchname_weight_data)
 if not(args.branchname_weight_dy_mc == "weight" or args.branchname_weight_dy_mc == "final_weight"):
     raise ValueError("Invalid configuration parameter branchname-weight-dy-mc = '%s' !!" % args.branchname_weight_dy_mc)
-
 
 path_prefix = '' if 'TauTriggerTools' in os.getcwd() else 'TauTriggerTools/'
 sys.path.insert(0, path_prefix + 'Common/python')
@@ -74,8 +74,9 @@ class TurnOnData:
         self.hist_passed = None
         self.eff = None
 
-def CreateHistograms(input_file, channels, decay_modes, discr_name, working_points, hist_models, label, var,
-                     output_file):
+def CreateHistograms(input_file, branchname_weight,
+                     channels, decay_modes, discr_name, 
+                     working_points, hist_models, label, var, output_file):
     df = ROOT.RDataFrame('events', input_file)
     turnOn_data = {}
     dm_labels = {}
@@ -139,6 +140,7 @@ def CreateHistograms(input_file, channels, decay_modes, discr_name, working_poin
 output_file = ROOT.TFile(args.output + '.root', 'RECREATE')
 input_files = [ args.input_data, args.input_dy_mc ]
 n_inputs = len(input_files)
+branchnames_weight = [ args.branchname_weight_dy_mc, args.branchname_weight_data ] 
 labels = [ 'data', 'mc' ]
 var = 'tau_pt'
 title, x_title = '#tau p_{T}', '#tau p_{T} (GeV)'
@@ -154,7 +156,8 @@ hist_models = {
 turnOn_data = [None] * n_inputs
 for input_id in range(n_inputs):
     print("Creating {} histograms...".format(labels[input_id]))
-    turnOn_data[input_id] = CreateHistograms(input_files[input_id], channels, decay_modes, 'byDeepTau2017v2p1VSjet',
+    turnOn_data[input_id] = CreateHistograms(input_files[input_id], branchnames_weight[input_id], 
+                                             channels, decay_modes, 'byDeepTau2017v2p1VSjet',
                                              working_points, hist_models, labels[input_id], var, output_file)
 
 colors = [ ROOT.kRed, ROOT.kBlack ]
