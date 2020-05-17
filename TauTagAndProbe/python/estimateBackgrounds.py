@@ -124,7 +124,7 @@ final_weight_dy_mc = ROOT.final_weight_dy_mc.Initialize(sf_qcd_SS_to_OS, sf_w_mc
 if args.mode == "subtract-from-data":
     df_output_dy_mc = df_input.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_ztt_mc))
 elif args.mode == "add-to-dy-mc":
-    df_output_dy_mc = df_input.Filter("(selection == %i && type == %i) || (selection == %i) || (selection == %i && (type == %i || type == %i || type == %i)" % (selection_OS_low_mT, type_ztt_mc, selection_SS_low_mT, selection_OS_low_mT, type_zmm-mc, type_w_mc, type_ttbar_mc))
+    df_output_dy_mc = df_input.Filter("(selection == %i && type == %i) || (selection == %i) || (selection == %i && (type == %i || type == %i || type == %i))" % (selection_OS_low_mT, type_ztt_mc, selection_SS_low_mT, selection_OS_low_mT, type_zmm_mc, type_w_mc, type_ttbar_mc))
     df_output_dy_mc = df_output_dy_mc.Define("final_weight", "final_weight_dy_mc::GetDefault().operator()(selection, type, weight)")
 
 # step 7: print data and dy-mc event yields in "signal" region for output RDataFrame objects
