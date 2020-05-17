@@ -129,9 +129,9 @@ else:
      df = df.Define('genEventWeight_signOnly', "genEventWeight >= 0. ? +1. : -1.")
      N_eff = float(df.Sum("genEventWeight_signOnly").GetValue())
      N_tot = float(df.Count().GetValue()) 
-     print("N_tot = %1.2f, N_eff = %1.2f" % (N_tot, N_eff)
+     print("N_tot = %1.2f, N_eff = %1.2f" % (N_tot, N_eff))
      df = df.Define('lumiScale', "%s * %1.2f / %1.2f" % (str(LumiScale), N_tot, N_eff)) # LumiScale = x-sec * Integ. Lumi. 
-     print("lumiScale = %1.2f" % (str(LumiScale), N_tot, N_eff)
+     print("lumiScale = %1.2f" % eval("%s * %1.2f / %1.2f" % (str(LumiScale), N_tot, N_eff)))
      df = df.Define('weight', "puWeight * genEventWeight_signOnly * lumiScale")
  
 skimmed_branches = [
