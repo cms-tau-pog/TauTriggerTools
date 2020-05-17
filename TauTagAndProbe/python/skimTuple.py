@@ -116,27 +116,26 @@ if selection_id == TauSelection.DeepTau:
     df = df.Filter('(byDeepTau2017v2p1VSmu & (1 << {})) != 0'.format(DiscriminatorWP.Tight))
 
 if args.type == 'data':
-     df = df.Define('weight', "1.")
+     df = df.Define('puWeight', "float(1.)")
+     df = df.Define("genEventWeight_signOnly", "0.")
      df = df.Define('lumiScale', str(LumiScale)) 
-     df = df.Define('puWeight', "-10.0")
-     df = df.Define("genEventWeight_signOnly","0.")
+     df = df.Define('weight', "1.")
 else:
  if args.type == 'ztt_mc':
        df = df.Filter('tau_gen_match == 5')
  elif args.type == 'zmm_mc':
        df = df.Filter('tau_gen_match != 5')
  df = df.Define('puWeight', "PileUpWeightProvider::GetDefault().GetWeight(npu)")
- Total_PU_Wt = float(df.Sum("puWeight").GetValue()) 
- df = df.Define('lumiScale_num', str(LumiScale)) # LumiScale = x-sec * Integ. Lumi.
- df = df.Define('genEventWeight_signOnly', "genEventWeight >= 0. ? 1.0 : -1.0")
+ df = df.Define('genEventWeight_signOnly', "genEventWeight >= 0. ? +1. : -1.")
  N_eff = float(df.Sum("genEventWeight_signOnly").GetValue())
- df = df.Define('lumiScale', ("lumiScale_num / %f" % (N_eff))) 
- df = df.Define('weight', ("(puWeight * genEventWeight_signOnly * lumiScale) / %f" % (Total_PU_Wt)))
+ N_tot = float(df.Count().GetValue()) 
+ df = df.Define('lumiScale', "%s * %1.2f / %1.2f" % (str(LumiScale), N_tot, N_eff)) # LumiScale = x-sec * Integ. Lumi. 
+ df = df.Define('weight', "puWeight * genEventWeight_signOnly * lumiScale")
  
 skimmed_branches = [
     'type', 'selection', 
-    'lumiScale', 'genEventWeight', "genEventWeight_signOnly",
-    'tau_pt', 'tau_eta', 'tau_phi', 'tau_mass', 'tau_charge', 'tau_decayMode', 'weight', 
+    'puWeight', 'genEventWeight', 'genEventWeight_signOnly', 'lumiScale', 'weight', 
+    'tau_pt', 'tau_eta', 'tau_phi', 'tau_mass', 'tau_charge', 'tau_decayMode', 
     'byIsolationMVArun2017v2DBoldDMwLT2017', 'byDeepTau2017v2p1VSjet'
 ]
 
