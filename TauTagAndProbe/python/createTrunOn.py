@@ -20,6 +20,7 @@ parser.add_argument('--working-points', required=False, type=str,
                     help="working points to process")
 parser.add_argument('--branchname-weight-data', required=True, type=str, help="branchname for event weights for data input")
 parser.add_argument('--branchname-weight-dy-mc', required=True, type=str, help="branchname for event weights for DY MC input")
+
 args = parser.parse_args()
 
 if not(args.branchname_weight_data == "weight" or args.branchname_weight_data == "final_weight"):
@@ -97,6 +98,10 @@ def CreateHistograms(input_file, branchname_weight,
                 df_ch = df_wp.Filter('pass_{} > 0.5'.format(channel))
                 for model_name, hist_model in hist_models.items():
                     turn_on = TurnOnData()
+                    if(label == "data"):
+                        branchname_weight = args.branchname_weight_data
+                    else:    
+                        branchname_weight = args.branchname_weight_dy_mc
                     turn_on.hist_total = df_wp.Histo1D(hist_model, var, branchname_weight)
                     turn_on.hist_passed = df_ch.Histo1D(hist_model, var, branchname_weight)
                     turnOn_data[dm][wp][channel][model_name] = turn_on

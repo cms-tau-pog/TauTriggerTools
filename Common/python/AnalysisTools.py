@@ -150,12 +150,15 @@ def FixEfficiencyBins(hist_passed, hist_total, remove_overflow=True):
         delta = hist_passed.GetBinContent(n) - hist_total.GetBinContent(n)
         if delta > 0:
             if delta > hist_passed.GetBinError(n):
-                raise RuntimeError("The number of passed events = {} +/- {} is above the total number events" \
+                print(" Warning: The number of passed events = {} +/- {} is above the total number events" \
                                    " = {} +/- {} in bin {} [{}, {})" \
                                    .format(hist_passed.GetBinContent(n), hist_passed.GetBinError(n),
                                            hist_total.GetBinContent(n), hist_total.GetBinError(n), n,
                                            hist_total.GetBinLowEdge(n),
                                            hist_total.GetBinLowEdge(n) + hist_total.GetBinWidth(n)))
+                print("Setting Bin Content of pass histogram for bin {} to {}".format(n, hist_total.GetBinContent(n)))
+                hist_passed.SetBinError(n, math.sqrt(hist_passed.GetBinError(n) ** 2 + delta ** 2))
+                hist_passed.SetBinContent(n, hist_total.GetBinContent(n))
             hist_passed.SetBinError(n, math.sqrt(hist_passed.GetBinError(n) ** 2 + delta ** 2))
             hist_passed.SetBinContent(n, hist_total.GetBinContent(n))
 
