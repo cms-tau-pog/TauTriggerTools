@@ -21,6 +21,7 @@ if not(args.mode == "subtract-from-data" or args.mode == "add-to-dy-mc"):
 
 path_prefix = '' if 'TauTriggerTools' in os.getcwd() else 'TauTriggerTools/'
 sys.path.insert(0, path_prefix + 'Common/python')
+from AnalysisTypes import *
 from AnalysisTools import *
 ROOT.ROOT.EnableImplicitMT(4)
 ROOT.gROOT.SetBatch(True)
@@ -380,20 +381,23 @@ branchname_weight_dy_mc = "final_weight"
 hist_model = ROOT.RDF.TH1DModel(var, var, 18, 20., 200.)
 histograms = {}
 if args.mode == "add-to-dy-mc":
-    offlineTauSel  = "tau_pt > 20 && abs(tau_eta) < 2.3"
-    offlineTauSel += " && (tau_decayMode == 0 || tau_decayMode == 1 || tau_decayMode == 2 || tau_decayMode == 10 || tau_decayMode == 11)"
-    offlineTauSel += " && (byDeepTau2017v2p1VSjet & (1 << 3))"
-    df_data_passing_offlineTauSel = df_output_data.Filter(offlineTauSel)
-    histograms['data']     = df_data_passing_offlineTauSel.Histo1D(hist_model, var, branchname_weight_data)
-    df_dy_mc_passing_offlineTauSel = df_output_dy_mc.Filter(offlineTauSel)
-    histograms['ztt-mc']   = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_ztt_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
-    histograms['zmm-mc']   = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_zmm_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
-    histograms['w-mc']     = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_w_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
-    histograms['ttbar-mc'] = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_ttbar_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
-    histograms['qcd']      = df_dy_mc_passing_offlineTauSel.Filter("selection == %i" % selection_SS_low_mT).Histo1D(hist_model, var, branchname_weight_dy_mc)
-    outputFileName = "estimateBackgrounds_%s.pdf" % var
-    makeControlPlot(histograms, var, True, outputFileName)
-    print("")
+    discr_name = "byDeepTau2017v2p1VSjet"
+    for wp in [ "VVVLoose", "VVLoose", "VLoose", "Loose", "Medium", "Tight", "VTight", "VVTight" ]:
+        wp_bit = ParseEnum(DiscriminatorWP, wp)
+        offlineTauSel  = "tau_pt > 20 && abs(tau_eta) < 2.3"
+        offlineTauSel += " && (tau_decayMode == 0 || tau_decayMode == 1 || tau_decayMode == 2 || tau_decayMode == 10 || tau_decayMode == 11)"
+        offlineTauSel += " && (%s & (1 << %i))" % (discr_name, wp_bit)
+        df_data_passing_offlineTauSel = df_output_data.Filter(offlineTauSel)
+        histograms['data']     = df_data_passing_offlineTauSel.Histo1D(hist_model, var, branchname_weight_data)
+        df_dy_mc_passing_offlineTauSel = df_output_dy_mc.Filter(offlineTauSel)
+        histograms['ztt-mc']   = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_ztt_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
+        histograms['zmm-mc']   = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_zmm_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
+        histograms['w-mc']     = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_w_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
+        histograms['ttbar-mc'] = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_ttbar_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
+        histograms['qcd']      = df_dy_mc_passing_offlineTauSel.Filter("selection == %i" % selection_SS_low_mT).Histo1D(hist_model, var, branchname_weight_dy_mc)
+        outputFileName = "estimateBackgrounds_%s%s_%s.pdf" % (discr_name, wp, var)
+        makeControlPlot(histograms, var, True, outputFileName)
+        print("")
 
 # step 9: write RDataFrame objects to output files
 df_output_data.Snapshot('events', args.output_data)
