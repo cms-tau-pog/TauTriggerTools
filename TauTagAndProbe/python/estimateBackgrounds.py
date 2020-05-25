@@ -400,5 +400,5 @@ if args.mode == "add-to-dy-mc":
         print("")
 
 # step 9: write RDataFrame objects to output files
-df_output_data.Snapshot('events', args.output_data)
-df_output_dy_mc.Snapshot('events', args.output_dy_mc)
+df_output_data.Snapshot('events', args.output_data + '.root')
+df_output_dy_mc.Snapshot('events', args.output_dy_mc + '.root')
