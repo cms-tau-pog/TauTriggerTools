@@ -194,7 +194,7 @@ def CreateLegend(pos=(0.18, 0.78), size=(0.2, 0.15), fill_color=ROOT.kWhite, fil
 def CreateEfficiencyRatioGraph(hist_passed_a, hist_total_a, hist_passed_b, hist_total_b):
     n_bins = hist_passed_a.GetNbinsX()
     if hist_total_a.GetNbinsX() != n_bins or hist_passed_b.GetNbinsX() != n_bins or hist_total_b.GetNbinsX():
-        raise ValueError("Histograms passed as function arguments have incomptible binning !!")
+        raise ValueError("Histograms passed as function arguments have incompatible binning !!")
     x = np.zeros(n_bins)
     y = np.zeros(n_bins)
     exl = np.zeros(n_bins)
@@ -212,7 +212,7 @@ def CreateEfficiencyRatioGraph(hist_passed_a, hist_total_a, hist_passed_b, hist_
 
         x[k] = hist_passed_a.GetBinCenter(n + 1)
 	if abs(hist_total_a.GetBinCenter(n + 1) - x[k]) > 1.e-1 or abs(hist_passed_b.GetBinCenter(n + 1) - x[k]) > 1.e-1 or abs(hist_total_b.GetBinCenter(n + 1) - x[k]) > 1.e-1:
-            raise ValueError("Histograms passed as function arguments have incomptible binning !!")
+            raise ValueError("Histograms passed as function arguments have incompatible binning !!")
         exl[k] = hist_passed_a.GetBinWidth(n + 1) / 2
         exh[k] = exl[k]
         y_down, y_up = KatzLog(np.array([passed_a, passed_b]), np.array([total_a, total_b]))
