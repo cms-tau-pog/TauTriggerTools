@@ -193,7 +193,7 @@ def CreateLegend(pos=(0.18, 0.78), size=(0.2, 0.15), fill_color=ROOT.kWhite, fil
 
 def CreateEfficiencyRatioGraph(hist_passed_a, hist_total_a, hist_passed_b, hist_total_b):
     n_bins = hist_passed_a.GetNbinsX()
-    if hist_total_a.GetNbinsX() != n_bins or hist_passed_b.GetNbinsX() != n_bins or hist_total_b.GetNbinsX():
+    if hist_total_a.GetNbinsX() != n_bins or hist_passed_b.GetNbinsX() != n_bins or hist_total_b.GetNbinsX() != n_bins:
         raise ValueError("Histograms passed as function arguments have incompatible binning !!")
     x = np.zeros(n_bins)
     y = np.zeros(n_bins)
