@@ -85,7 +85,7 @@ def makeBinContentsPositive(histogramName, histogram):
     integral_modified = histogram.Integral()
     print("integral: original = %1.2f, modified = %1.2f" % (integral_original, integral_modified))    
     if integral_modified > 0.:    
-        histogram.Scale(integral_original/integral_original)
+        histogram.Scale(integral_original/integral_modified)
 
 def makeControlPlot(histograms, var, useLogScale, outputFileName):
     
