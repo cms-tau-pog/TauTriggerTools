@@ -35,7 +35,7 @@ from AnalysisTools import *
 import RootPlotting
 ROOT.ROOT.EnableImplicitMT(4)
 ROOT.gROOT.SetBatch(True)
-ROOT.TH1.SetDefaultSumw2() # CV: This does not seem to work !! All bin-error are the exact square-root of the bin-contents !!
+ROOT.TH1.SetDefaultSumw2() # CV: This does not seem to work... all bin-error are the exact square-root of the bin-contents !!
 RootPlotting.ApplyDefaultGlobalStyle()
 
 def CreateBins(max_pt, for_fitting):
@@ -136,6 +136,7 @@ for dm in decay_modes:
 for dm in decay_modes:
     for wp in working_points:
         for channel in channels:
+            print('Processing {} {} WP DM = {}'.format(channel, wp, dm))
             for model_name in hist_models.keys():
                 turnOn_data = turnOn[idx_data][dm][wp][channel][model_name]
                 eff_data = None
@@ -146,7 +147,8 @@ for dm in decay_modes:
                                                                                                             turnOn_data.hist_total.GetPtr(), 
                                                                                                             turnOn_mc.hist_passed.GetPtr(),
                                                                                                             turnOn_mc.hist_total.GetPtr())
-                    
+                    #FixEfficiencyBins(passed_data, total_data)
+                    #FixEfficiencyBins(passed_mc, total_mc)
                 else:
                     passed_data, total_data = turnOn_data.hist_passed.GetPtr(), turnOn_data.hist_total.GetPtr()
                     FixEfficiencyBins(passed_data, total_data)
