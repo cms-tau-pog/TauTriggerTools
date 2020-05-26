@@ -211,10 +211,15 @@ for channel in channels:
                 out_name_pattern = '{{}}_{}_{}{}_{{}}'.format(channel, wp, dm_label)
                 output_file.WriteTObject(eff_data_root, out_name_pattern.format('data', 'eff'), 'Overwrite')
                 output_file.WriteTObject(eff_mc_root, out_name_pattern.format('mc', 'eff'), 'Overwrite')
-                eff_data_fitted_hist = Histogram.CreateTH1(eff_data_fitted.y_pred, [x_low, x_high],
-                                                           eff_data_fitted.sigma_pred, fixed_step=True)
-                eff_mc_fitted_hist = Histogram.CreateTH1(eff_mc_fitted.y_pred, [x_low, x_high],
-                                                         eff_mc_fitted.sigma_pred, fixed_step=True)
+                bin_edges = []
+                for i in range(len(eff_data.x)):
+                    if i == 0:
+                        bin_edges.append(eff_data.x[i] - eff_data.x_error_low[i])
+                    bin_edges.append(eff_data.x[i] + eff_data.x_error_high[i])
+                eff_data_fitted_hist = Histogram.CreateTH1(eff_data_fitted.y_pred, bin_edges,
+                                                           eff_data_fitted.sigma_pred, fixed_step=False)
+                eff_mc_fitted_hist = Histogram.CreateTH1(eff_mc_fitted.y_pred, bin_edges,
+                                                         eff_mc_fitted.sigma_pred, fixed_step=False)
                 sf_fitted_hist = eff_data_fitted_hist.Clone()
                 sf_fitted_hist.Divide(eff_mc_fitted_hist)
                 output_file.WriteTObject(eff_data_fitted_hist, out_name_pattern.format('data', 'fitted'), 'Overwrite')
