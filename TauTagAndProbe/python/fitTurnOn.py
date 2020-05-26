@@ -39,7 +39,7 @@ def MinTarget(dy, eff):
 class FitResults:
     def __init__(self, eff, x_pred):
         kernel_high = ConstantKernel()
-        kernel_low = ConstantKernel() * Matern(nu=1, length_scale_bounds=(10, 100), length_scale=20)
+        kernel_low = ConstantKernel() * Matern(nu=1, length_scale_bounds=(5, 50), length_scale=10)
         N = eff.x.shape[0]
         res = scipy.optimize.minimize(MinTarget, np.zeros(N), args=(eff,), bounds = [ [0, 1] ] * N,
                                       options={"maxfun": int(1e6)})
@@ -61,11 +61,12 @@ class FitResults:
             flat_eff, residuals, _, _, _ = np.polyfit(eff.x[N-n-1:], eff.y[N-n-1:], 0, w=1/yerr[N-n-1:], full=True)
             chi2_ndof = residuals[0] / n
             #print(n, chi2_ndof)
-            if (chi2_ndof > 0 and chi2_ndof < best_chi2_ndof) or eff.x[N-n-1] + eff.x_error_high[N-n-1] >= 100:
+            if (chi2_ndof > 0 and chi2_ndof < best_chi2_ndof) or eff.x[N-n-1] + eff.x_error_high[N-n-1] >= 60:
                 self.pt_start_flat = eff.x[N-n-1]
                 best_chi2_ndof = chi2_ndof
+        #print("pt_start_flat = %1.2f: best_chi2_ndof = %1.2f" % (self.pt_start_flat, best_chi2_ndof))
         if best_chi2_ndof > 20:
-            print("Unable to determine the high pt region")
+            print("Warning: Unable to determine the plateau region")
             self.pt_start_flat = eff.x[-1]
 
         low_pt = eff.x <= self.pt_start_flat
@@ -114,7 +115,7 @@ decay_modes = args.decay_modes.split(',')
 working_points = args.working_points.split(',')
 ch_validity_thrs = { 'etau': 35, 'mutau': 32, 'ditau': 40 }
 
-file = ROOT.TFile(args.input, 'READ')
+input_file = ROOT.TFile(args.input, 'READ')
 output_file = ROOT.TFile('{}.root'.format(args.output), 'RECREATE', '', ROOT.RCompressionSetting.EDefaults.kUseSmallest)
 
 for channel in channels:
@@ -125,22 +126,33 @@ for channel in channels:
                 dm_label = '_dm{}'.format(dm) if dm != 'all' else ''
                 name_pattern = '{{}}_{}_{}{}_fit_eff'.format(channel, wp, dm_label)
                 dm_label = '_dm'+ dm if len(dm) > 0 else ''
-                eff_data_root = file.Get(name_pattern.format('data'))
-                eff_mc_root = file.Get(name_pattern.format('mc'))
+                eff_data_root = input_file.Get(name_pattern.format('data'))
+                eff_mc_root = input_file.Get(name_pattern.format('mc'))
                 eff_data = Graph(root_graph=eff_data_root)
                 eff_mc = Graph(root_graph=eff_mc_root)
                 pred_step = 0.1
-                #x_low = min(eff_data.x[0] - eff_data.x_error_low[0], eff_mc.x[0] - eff_mc.x_error_low[0])
-                #x_high = max(eff_data.x[-1] + eff_data.x_error_high[-1], eff_mc.x[-1] + eff_mc.x_error_high[-1])
-                x_low, x_high = 20, 1000
-                x_pred = np.arange(x_low, x_high + pred_step / 2, pred_step)
+                x_low = min(eff_data.x[0] - eff_data.x_error_low[0], eff_mc.x[0] - eff_mc.x_error_low[0])
+                x_high = max(eff_data.x[-1] + eff_data.x_error_high[-1], eff_mc.x[-1] + eff_mc.x_error_high[-1])
+                print("x_low = %1.2f, x_high = %1.2f" % (x_low, x_high))
+                #x_low, x_high = 20, 1000
+                #x_pred = np.arange(x_low, x_high + pred_step / 2, pred_step)
+                x_array = []
+                x_array.append(x_low)
+                x_array.extend([ x_data for x_data in eff_data.x ])
+                x_array.append(x_high)
+                x_pred = np.array(x_array)
+                print("x_pred = ", x_pred)
 
                 eff_data_fitted = FitResults(eff_data, x_pred)
+                print("eff_data_fitted = ", eff_data_fitted.y_pred)
                 eff_mc_fitted = FitResults(eff_mc, x_pred)
+                print("eff_mc_fitted = ", eff_mc_fitted.y_pred)
 
                 sf = eff_data_fitted.y_pred / eff_mc_fitted.y_pred
+                print("sf = ", sf)
                 sf_sigma = np.sqrt( (eff_data_fitted.sigma_pred / eff_mc_fitted.y_pred) ** 2 \
                          + (eff_data_fitted.y_pred / (eff_mc_fitted.y_pred ** 2) * eff_mc_fitted.sigma_pred ) ** 2 )
+                print("sf_sigma = ", sf_sigma)
 
                 fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(7, 7), sharex=True,
                                                            gridspec_kw = {'height_ratios':[2, 1]})
