@@ -153,13 +153,13 @@ def FixEfficiencyBins(hist_passed, hist_total, remove_overflow=True):
         delta = hist_passed.GetBinContent(i) - hist_total.GetBinContent(i)
         if delta > 0:
             if delta > hist_passed.GetBinError(i):
-                print(" Warning: The number of passed events = {} +/- {} is above the total number events" \
-                                   " = {} +/- {} in bin {} [{}, {})" \
+                print("Warning: The number of passed events = {} +/- {} is above the total number events" \
+                                   " = {} +/- {} in bin {} [{}, {})." \
                                    .format(hist_passed.GetBinContent(i), hist_passed.GetBinError(i),
                                            hist_total.GetBinContent(i), hist_total.GetBinError(i), i,
                                            hist_total.GetBinLowEdge(i),
                                            hist_total.GetBinLowEdge(i) + hist_total.GetBinWidth(i)))
-                print("Setting bin-content of 'pass' histogram for bin #{} to {}".format(i, hist_total.GetBinContent(i)))
+                print("         Setting bin-content of 'pass' histogram for bin #{} to {}.".format(i, hist_total.GetBinContent(i)))
             hist_passed.SetBinError(i, math.sqrt(hist_passed.GetBinError(i) ** 2 + delta ** 2))
             hist_passed.SetBinContent(i, hist_total.GetBinContent(i))
 
@@ -197,8 +197,8 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
 
     is_unmerged_bin = False
 
-    # sum bins of histograms passed as function arguments 
-    # until sufficient event statistics is accumlated in each bin of each "rebinned" histogram
+    # merge bins of the original histogram from left to right
+    # until sufficient event statistics is accumulated in each bin of each rebinned histogram
     for idx_bin in range(n_bins):
 
         binEdge = myhist_passed_a.edges[idx_bin]
@@ -241,12 +241,24 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
     # merge events in last two bins in case last bin does not have sufficient event statistics
     if is_unmerged_bin:
         if n_bins_rebinned >= 1:
-            for idx_hist in range(len(myhists)):
-                hists_rebinned_binContents[idx_hist][n_bins_rebinned - 1] += hists_rebinned_binContents[idx_hist][n_bins_rebinned]
-                hists_rebinned_binContents[idx_hist].pop()
+            # CV: merge bins of the rebinned histogram from right to left 
+            #     until sufficient event statistics is accumulated in each bin 
+            keep_merging = True
+            while keep_merging and n_bins_rebinned >= 1:
+                keep_merging = False
+                for idx_hist in range(len(myhists)):
+                    hists_rebinned_binContents[idx_hist][n_bins_rebinned - 1] += hists_rebinned_binContents[idx_hist][n_bins_rebinned]
+                    hists_rebinned_binContents[idx_hist].pop()
+                    if hists_rebinned_binContents[idx_hist][n_bins_rebinned - 1] < 0.:
+                        keep_merging = True
 
-                hists_rebinned_binErrors2[idx_hist][n_bins_rebinned - 1] += hists_rebinned_binErrors2[idx_hist][n_bins_rebinned]
-                hists_rebinned_binErrors2[idx_hist].pop()
+                    hists_rebinned_binErrors2[idx_hist][n_bins_rebinned - 1] += hists_rebinned_binErrors2[idx_hist][n_bins_rebinned]
+                    hists_rebinned_binErrors2[idx_hist].pop()
+                if not is_unmerged_bin:
+                    print("Warning: Negative number of events encountered in the rightmost bin.")
+                    print("         Merging the two rightmost bins...")
+                    n_bins_rebinned -= 1
+                is_unmerged_bin = False
         else:
             # CV: always create at least one bin, even if the event statistics in that bin is not sufficient
             n_bins_rebinned = 1
