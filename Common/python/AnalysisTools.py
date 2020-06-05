@@ -220,9 +220,12 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
                 hists_rebinned_binErrors2[idx_hist].append(0.)
             hists_rebinned_binErrors2[idx_hist][n_bins_rebinned] += binError2
 
+            # CV: require that all rebinned histograms have positive bin-contents
+            if binContent <= 0.:
+                is_sufficient_stats = False
+
             # CV: check sufficient event statistics condition only for "total" histograms
-            #    (number of events in "passed" histogram may be genuinely zero in case efficiency is low !!)
-            if (idx_hist == 1 or idx_hist == 3) and (binContent <= 0. or math.sqrt(binError2)/binContent > max_binError_div_binContent):
+            if (idx_hist == 1 or idx_hist == 3) and (math.sqrt(binError2)/binContent > max_binError_div_binContent):
                 is_sufficient_stats = False
         # CV: require that number of events in "passed" histogram is less than or equal to number of events in "total" histogram
         if hists_rebinned_binContents[0][n_bins_rebinned] >= hists_rebinned_binContents[1][n_bins_rebinned] or \
@@ -279,24 +282,37 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
             idx_passed = None
             idx_total = None
             graphs = None
+            label = None
             if hist == "a":
                 idx_passed = 0
                 idx_total = 1
                 graphs = graphs_a
+                label = "data"
             elif hist == "b":
                 idx_passed = 2
                 idx_total = 3
                 graphs = graphs_b
+                label = "mc"
             else:
                 continue
 
             binContent_passed = hists_rebinned_binContents[idx_passed][idx_bin_rebinned]
+            binError_passed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
+            ##print("%s, passed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_passed, binError_passed))
             binContent_total = hists_rebinned_binContents[idx_total][idx_bin_rebinned]
+            binError_total = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned]))
+            ##print("%s, total (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_total, binError_total))
+            binContent_failed = binContent_total - binContent_passed
+            binError_failed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned] - hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
+            # CV: protect against case that binErrors are unphysically small, 
+            #     caused by events with negative weights
+            if binError_failed/max(1., binContent_failed) < binError_passed/max(1., binContent_passed):
+                binError_failed = max(1., binContent_failed)*binError_passed/max(1., binContent_passed)
+            if binError_failed/max(1., binContent_failed) < binError_total/max(1., binContent_total):
+                binError_failed = max(1., binContent_failed)*binError_total/max(1., binContent_total)
+            ##print("%s, failed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_failed, binError_failed))
             eff = binContent_passed / binContent_total
-            eff_low, eff_high = weighted_eff_confint_freqMC(binContent_passed, 
-                                                            binContent_total - binContent_passed,
-                                                            math.sqrt(hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]),
-                                                            math.sqrt(hists_rebinned_binErrors2[idx_total][idx_bin_rebinned] - hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
+            eff_low, eff_high = weighted_eff_confint_freqMC(binContent_passed, binContent_failed, binError_passed, binError_failed)
             graphs.x[idx_bin_rebinned] = binCenter
             graphs.x_error_low[idx_bin_rebinned] = binCenter - binEdge_low
             graphs.x_error_high[idx_bin_rebinned] = binEdge_high - binCenter
