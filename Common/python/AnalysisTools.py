@@ -168,7 +168,7 @@ def dumpHistogram(histName, n_bins, hist_binEdges, hist_binContents, hist_binErr
        raise ValueError("Internal error !!")
     print("histogram = %s" % histName)
     print(" bin-contents = %s" % hist_binContents)
-    print(" bin-errors = %s" % [ math.sqrt(hist_binError2) for hist_binError2 in hist_binContents ])
+    print(" bin-errors = %s" % [ math.sqrt(hist_binError2) for hist_binError2 in hist_binErrors2])
     #print(" bin-error/bin-content = %s" % [ math.sqrt(hist_binErrors2[i])/hist_binContents[i] if hist_binContents[i] > 0. else 0.5 for i in range(n_bins) ])
 
 def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_total_b, max_binError_div_binContent = 0.20):
