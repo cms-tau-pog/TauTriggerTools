@@ -167,11 +167,11 @@ def dumpHistogram(histName, n_bins, hist_binEdges, hist_binContents, hist_binErr
     if len(hist_binEdges) != (n_bins + 1) or len(hist_binContents) != n_bins or len(hist_binErrors2) != n_bins:
        raise ValueError("Internal error !!")
     print("histogram = %s" % histName)
-    print(" bin-contents = %s" % hist_binContents)
-    print(" bin-errors = %s" % [ math.sqrt(hist_binError2) for hist_binError2 in hist_binErrors2])
-    ##print(" bin-error/bin-content = %s" % [ math.sqrt(hist_binErrors2[i])/hist_binContents[i] if hist_binContents[i] > 0. else 0.5 for i in range(n_bins) ])
+    print(" bin-contents = ", hist_binContents)
+    print(" bin-errors = ", [ math.sqrt(hist_binError2) for hist_binError2 in hist_binErrors2])
+    ##print(" bin-error/bin-content = ", [ math.sqrt(hist_binErrors2[i])/hist_binContents[i] if hist_binContents[i] > 0. else 0.5 for i in range(n_bins) ])
 
-def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_total_b, max_binError_div_binContent = 0.20):
+def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_total_b, max_binError_div_binContent = 0.50):
 
     ##print("<AutoRebinAndEfficiency>:")
 
@@ -189,6 +189,16 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
     myhist_total_a  = myhists[1]
     myhist_passed_b = myhists[2]
     myhist_total_b  = myhists[3]
+
+    ##print("BEFORE rebinning:")
+    ##print("#bins = %i" % n_bins)
+    ##print(" bin-edges = ", myhist_total_a.edges)
+    ##dumpHistogram("data, passed", n_bins, myhist_total_a.edges, myhist_passed_a.values, myhist_passed_a.errors)
+    ##dumpHistogram("data, total",  n_bins, myhist_total_a.edges, myhist_total_a.values, myhist_total_a.errors)
+    ##print("efficiency (data) = ", [ myhist_passed_a.values[i]/myhist_total_a.values[i] for i in range(n_bins) ])
+    ##dumpHistogram("mc, passed",   n_bins, myhist_total_a.edges, myhist_passed_b.values, myhist_passed_b.errors)
+    ##dumpHistogram("mc, total",    n_bins, myhist_total_a.edges, myhist_total_b.values, myhist_total_b.errors)
+    ##print("efficiency (mc) = ", [ myhist_passed_b.values[i]/myhist_total_b.values[i] for i in range(n_bins) ])
 
     hists_rebinned_binContents = [ [], [], [], [] ]
     hists_rebinned_binErrors2  = [ [], [], [], [] ]    
@@ -275,12 +285,15 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
 
     if len(hist_rebinned_binEdges) != (n_bins_rebinned + 1):
        raise ValueError("Internal error !!")
-    ##print("#bins (rebinned) = %i" % n_bins_rebinned)
-    ##print(" bin-edges = %s" % hist_rebinned_binEdges)
+    ##print("AFTER rebinning:")
+    ##print("#bins = %i" % n_bins_rebinned)
+    ##print(" bin-edges = ", hist_rebinned_binEdges)
     ##dumpHistogram("data, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[0], hists_rebinned_binErrors2[0])
     ##dumpHistogram("data, total",  n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[1], hists_rebinned_binErrors2[1])
+    ##print("efficiency (data) = ", [ hists_rebinned_binContents[0][i]/hists_rebinned_binContents[1][i] for i in range(n_bins_rebinned) ])
     ##dumpHistogram("mc, passed",   n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[2], hists_rebinned_binErrors2[2])
     ##dumpHistogram("mc, total",    n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[3], hists_rebinned_binErrors2[3])
+    ##print("efficiency (data) = ", [ hists_rebinned_binContents[2][i]/hists_rebinned_binContents[3][i] for i in range(n_bins_rebinned) ])
 
     # compute efficiency and build graph
     graphs_a = MultiGraph(3, n_bins_rebinned)
