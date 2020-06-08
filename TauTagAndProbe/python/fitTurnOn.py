@@ -61,7 +61,7 @@ class FitResults:
             flat_eff, residuals, _, _, _ = np.polyfit(eff.x[N-n-1:], eff.y[N-n-1:], 0, w=1/yerr[N-n-1:], full=True)
             chi2_ndof = residuals[0] / n
             #print(n, chi2_ndof)
-            if (chi2_ndof > 0 and chi2_ndof < best_chi2_ndof) or eff.x[N-n-1] + eff.x_error_high[N-n-1] >= 60:
+            if (chi2_ndof > 0 and chi2_ndof < best_chi2_ndof) or eff.x[N-n-1] + eff.x_error_high[N-n-1] >= 80:
                 self.pt_start_flat = eff.x[N-n-1]
                 best_chi2_ndof = chi2_ndof
         #print("pt_start_flat = %1.2f: best_chi2_ndof = %1.2f" % (self.pt_start_flat, best_chi2_ndof))
