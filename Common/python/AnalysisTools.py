@@ -235,12 +235,13 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
             if not hists_rebinned_binContents[idx_hist][n_bins_rebinned] >= 0.:
                 is_sufficient_stats = False
             # CV: require that all rebinned "total" histograms have positive bin-contents
-            if not hists_rebinned_binContents[idx_hist][n_bins_rebinned] > 0.:
+            if (idx_hist == 1 or idx_hist == 3) and not hists_rebinned_binContents[idx_hist][n_bins_rebinned] > 0.:             
                 is_sufficient_stats = False
-
-            # CV: check sufficient event statistics condition only for "total" histograms
-            if (idx_hist == 1 or idx_hist == 3) and (math.sqrt(binError2)/binContent > max_binError_div_binContent):
-                is_sufficient_stats = False
+            # CV: require that relative uncertainty (= bin-error/bin-content) is below threshold for all rebinned "total" histograms
+            if hists_rebinned_binContents[idx_hist][n_bins_rebinned] > 0.:
+                binError_div_binContent = math.sqrt(hists_rebinned_binErrors2[idx_hist][n_bins_rebinned])/hists_rebinned_binContents[idx_hist][n_bins_rebinned]
+                if (idx_hist == 1 or idx_hist == 3) and (binError_div_binContent  > max_binError_div_binContent):
+                    is_sufficient_stats = False
         # CV: require that number of events in "passed" histogram is less than or equal to number of events in "total" histogram
         if hists_rebinned_binContents[0][n_bins_rebinned] >= hists_rebinned_binContents[1][n_bins_rebinned] or \
            hists_rebinned_binContents[2][n_bins_rebinned] >= hists_rebinned_binContents[3][n_bins_rebinned]:
@@ -257,21 +258,23 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
         if n_bins_rebinned >= 1:
             # CV: merge bins of the rebinned histogram from right to left 
             #     until sufficient event statistics is accumulated in each bin 
-            keep_merging = True
-            while keep_merging and n_bins_rebinned >= 1:
+            n_bins_rebinned += 1
+            keep_merging = True            
+            while keep_merging and n_bins_rebinned >= 2:
                 keep_merging = False
                 for idx_hist in range(len(myhists)):
-                    hists_rebinned_binContents[idx_hist][n_bins_rebinned - 1] += hists_rebinned_binContents[idx_hist][n_bins_rebinned]
+                    hists_rebinned_binContents[idx_hist][n_bins_rebinned - 2] += hists_rebinned_binContents[idx_hist][n_bins_rebinned - 1]
                     hists_rebinned_binContents[idx_hist].pop()
-                    if hists_rebinned_binContents[idx_hist][n_bins_rebinned - 1] < 0.:
+                    if hists_rebinned_binContents[idx_hist][n_bins_rebinned - 2] < 0.:
                         keep_merging = True
 
-                    hists_rebinned_binErrors2[idx_hist][n_bins_rebinned - 1] += hists_rebinned_binErrors2[idx_hist][n_bins_rebinned]
+                    hists_rebinned_binErrors2[idx_hist][n_bins_rebinned - 2] += hists_rebinned_binErrors2[idx_hist][n_bins_rebinned - 1]
                     hists_rebinned_binErrors2[idx_hist].pop()
+                hist_rebinned_binEdges.pop()
                 if not is_unmerged_bin:
                     print("Warning: Negative number of events encountered in the rightmost bin.")
                     print("         Merging the two rightmost bins...")
-                    n_bins_rebinned -= 1
+                n_bins_rebinned -= 1
                 is_unmerged_bin = False
         else:
             # CV: always create at least one bin, even if the event statistics in that bin is not sufficient
