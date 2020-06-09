@@ -194,10 +194,10 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
     ##print("#bins = %i" % n_bins)
     ##print(" bin-edges = ", myhist_total_a.edges)
     ##dumpHistogram("data, passed", n_bins, myhist_total_a.edges, myhist_passed_a.values, myhist_passed_a.errors)
-    ##dumpHistogram("data, total",  n_bins, myhist_total_a.edges, myhist_total_a.values, myhist_total_a.errors)
+    ##dumpHistogram("data, total", n_bins, myhist_total_a.edges, myhist_total_a.values, myhist_total_a.errors)
     ##print("efficiency (data) = ", [ myhist_passed_a.values[i]/myhist_total_a.values[i] for i in range(n_bins) ])
-    ##dumpHistogram("mc, passed",   n_bins, myhist_total_a.edges, myhist_passed_b.values, myhist_passed_b.errors)
-    ##dumpHistogram("mc, total",    n_bins, myhist_total_a.edges, myhist_total_b.values, myhist_total_b.errors)
+    ##dumpHistogram("mc, passed", n_bins, myhist_total_a.edges, myhist_passed_b.values, myhist_passed_b.errors)
+    ##dumpHistogram("mc, total", n_bins, myhist_total_a.edges, myhist_total_b.values, myhist_total_b.errors)
     ##print("efficiency (mc) = ", [ myhist_passed_b.values[i]/myhist_total_b.values[i] for i in range(n_bins) ])
 
     hists_rebinned_binContents = [ [], [], [], [] ]
@@ -230,8 +230,11 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
                 hists_rebinned_binErrors2[idx_hist].append(0.)
             hists_rebinned_binErrors2[idx_hist][n_bins_rebinned] += binError2
 
-            # CV: require that all rebinned histograms have positive bin-contents
-            if binContent <= 0.:
+            # CV: require that all rebinned histograms have non-negative bin-contents
+            if not hists_rebinned_binContents[idx_hist][n_bins_rebinned] >= 0.:
+                is_sufficient_stats = False
+            # CV: require that all rebinned "total" histograms have positive bin-contents
+            if not hists_rebinned_binContents[idx_hist][n_bins_rebinned] > 0.:
                 is_sufficient_stats = False
 
             # CV: check sufficient event statistics condition only for "total" histograms
@@ -289,11 +292,11 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
     ##print("#bins = %i" % n_bins_rebinned)
     ##print(" bin-edges = ", hist_rebinned_binEdges)
     ##dumpHistogram("data, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[0], hists_rebinned_binErrors2[0])
-    ##dumpHistogram("data, total",  n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[1], hists_rebinned_binErrors2[1])
+    ##dumpHistogram("data, total", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[1], hists_rebinned_binErrors2[1])
     ##print("efficiency (data) = ", [ hists_rebinned_binContents[0][i]/hists_rebinned_binContents[1][i] for i in range(n_bins_rebinned) ])
-    ##dumpHistogram("mc, passed",   n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[2], hists_rebinned_binErrors2[2])
-    ##dumpHistogram("mc, total",    n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[3], hists_rebinned_binErrors2[3])
-    ##print("efficiency (data) = ", [ hists_rebinned_binContents[2][i]/hists_rebinned_binContents[3][i] for i in range(n_bins_rebinned) ])
+    ##dumpHistogram("mc, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[2], hists_rebinned_binErrors2[2])
+    ##dumpHistogram("mc, total", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[3], hists_rebinned_binErrors2[3])
+    ##print("efficiency (mc) = ", [ hists_rebinned_binContents[2][i]/hists_rebinned_binContents[3][i] for i in range(n_bins_rebinned) ])
 
     # compute efficiency and build graph
     graphs_a = MultiGraph(3, n_bins_rebinned)
@@ -320,17 +323,16 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
                 label = "mc"
             else:
                 continue
-
-            binContent_passed = max(0., hists_rebinned_binContents[idx_passed][idx_bin_rebinned])
+       
+            binContent_passed = hists_rebinned_binContents[idx_passed][idx_bin_rebinned]
             binError_passed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
             ##print("%s, passed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_passed, binError_passed))
-            binContent_total = max(0., hists_rebinned_binContents[idx_total][idx_bin_rebinned])
+            binContent_total = hists_rebinned_binContents[idx_total][idx_bin_rebinned]
             binError_total = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned]))
             ##print("%s, total (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_total, binError_total))
             binContent_failed = max(0., hists_rebinned_binContents[idx_total][idx_bin_rebinned] - hists_rebinned_binContents[idx_passed][idx_bin_rebinned])
             binError_failed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned] - hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
             ##print("%s, failed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_failed, binError_failed))
-            print("binContent_passed: %1.2f, binContent_total: %1.2f" % (binContent_passed, binContent_total))
             eff = binContent_passed / binContent_total
             eff_low, eff_high = weighted_eff_confint_freqMC(binContent_passed, binContent_failed, binError_passed, binError_failed)
             graphs.x[idx_bin_rebinned] = binCenter
