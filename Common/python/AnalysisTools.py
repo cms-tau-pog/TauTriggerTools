@@ -116,7 +116,7 @@ def RemoveOverflowBins(hist):
         hist.SetBinContent(bin, 0)
         hist.SetBinError(bin, 0)
 
-def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.01):
+def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.50):
     has_fixes = False
     integral = hist.Integral()
     if integral <= 0:
@@ -125,7 +125,7 @@ def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.01):
         x = hist.GetBinContent(n)
         if x < 0:
             x_err = hist.GetBinError(n)
-            if x + x_err < 0:
+            if x + 2.*x_err < 0:
                 raise RuntimeError("Yield in bin {} is {} +- {}. Negative bin for which the yield is not statistically"
                                    " compatible with 0 can't be fixed.".format(n, x, x_err))
             hist.SetBinError(n, math.sqrt(x_err ** 2 + x ** 2))
@@ -330,6 +330,7 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
             binContent_failed = max(0., hists_rebinned_binContents[idx_total][idx_bin_rebinned] - hists_rebinned_binContents[idx_passed][idx_bin_rebinned])
             binError_failed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned] - hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
             ##print("%s, failed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_failed, binError_failed))
+            print("binContent_passed: %1.2f, binContent_total: %1.2f" % (binContent_passed, binContent_total))
             eff = binContent_passed / binContent_total
             eff_low, eff_high = weighted_eff_confint_freqMC(binContent_passed, binContent_failed, binError_passed, binError_failed)
             graphs.x[idx_bin_rebinned] = binCenter
