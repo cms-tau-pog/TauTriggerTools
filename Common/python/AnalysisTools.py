@@ -116,7 +116,7 @@ def RemoveOverflowBins(hist):
         hist.SetBinContent(bin, 0)
         hist.SetBinError(bin, 0)
 
-def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.50):
+def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.65):
     has_fixes = False
     integral = hist.Integral()
     if integral <= 0:
@@ -125,7 +125,7 @@ def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.50):
         x = hist.GetBinContent(n)
         if x < 0:
             x_err = hist.GetBinError(n)
-            if x + 2.*x_err < 0:
+            if x + 3.*x_err < 0:
                 raise RuntimeError("Yield in bin {} is {} +- {}. Negative bin for which the yield is not statistically"
                                    " compatible with 0 can't be fixed.".format(n, x, x_err))
             hist.SetBinError(n, math.sqrt(x_err ** 2 + x ** 2))
@@ -135,6 +135,7 @@ def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.50):
         new_integral = hist.Integral()
         total_rel_shift = abs(new_integral - integral) / integral
         if total_rel_shift > max_rel_shift:
+            print("total_rel_shift: %1.2f, max_rel_shift %1.2f" % (total_rel_shift, max_rel_shift))
             raise RuntimeError("The overal shift to the integral due to negative bins = {} is above the allowed limit" \
                                " = {}.".format(total_rel_shift, max_rel_shift))
         if fix_integral:
