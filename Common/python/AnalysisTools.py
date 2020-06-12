@@ -292,15 +292,15 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
 
     if len(hist_rebinned_binEdges) != (n_bins_rebinned + 1):
        raise ValueError("Internal error !!")
-    ##print("AFTER rebinning:")
-    ##print("#bins = %i" % n_bins_rebinned)
-    ##print(" bin-edges = ", hist_rebinned_binEdges)
-    ##dumpHistogram("data, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[0], hists_rebinned_binErrors2[0])
-    ##dumpHistogram("data, total", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[1], hists_rebinned_binErrors2[1])
-    ##print("efficiency (data) = ", [ hists_rebinned_binContents[0][i]/hists_rebinned_binContents[1][i] for i in range(n_bins_rebinned) ])
-    ##dumpHistogram("mc, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[2], hists_rebinned_binErrors2[2])
-    ##dumpHistogram("mc, total", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[3], hists_rebinned_binErrors2[3])
-    ##print("efficiency (mc) = ", [ hists_rebinned_binContents[2][i]/hists_rebinned_binContents[3][i] for i in range(n_bins_rebinned) ])
+    print("AFTER rebinning:")
+    print("#bins = %i" % n_bins_rebinned)
+    print(" bin-edges = ", hist_rebinned_binEdges)
+    dumpHistogram("data, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[0], hists_rebinned_binErrors2[0])
+    dumpHistogram("data, total", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[1], hists_rebinned_binErrors2[1])
+    print("efficiency (data) = ", [ hists_rebinned_binContents[0][i]/hists_rebinned_binContents[1][i] for i in range(n_bins_rebinned) ])
+    dumpHistogram("mc, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[2], hists_rebinned_binErrors2[2])
+    dumpHistogram("mc, total", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[3], hists_rebinned_binErrors2[3])
+    print("efficiency (mc) = ", [ hists_rebinned_binContents[2][i]/hists_rebinned_binContents[3][i] for i in range(n_bins_rebinned) ])
 
     # compute efficiency and build graph
     graphs_a = MultiGraph(3, n_bins_rebinned)
@@ -330,15 +330,16 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
        
             binContent_passed = hists_rebinned_binContents[idx_passed][idx_bin_rebinned]
             binError_passed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
-            ##print("%s, passed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_passed, binError_passed))
+            print("%s, passed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_passed, binError_passed))
             binContent_total = hists_rebinned_binContents[idx_total][idx_bin_rebinned]
             binError_total = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned]))
-            ##print("%s, total (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_total, binError_total))
+            print("%s, total (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_total, binError_total))
             binContent_failed = max(0., hists_rebinned_binContents[idx_total][idx_bin_rebinned] - hists_rebinned_binContents[idx_passed][idx_bin_rebinned])
             binError_failed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned] - hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
-            ##print("%s, failed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_failed, binError_failed))
+            print("%s, failed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_failed, binError_failed))
             eff = binContent_passed / binContent_total
             eff_low, eff_high = weighted_eff_confint_freqMC(binContent_passed, binContent_failed, binError_passed, binError_failed)
+            print("%s, eff = %1.2f + %1.2f - %1.2f" % (label, eff, eff_high - eff, eff - eff_low))
             graphs.x[idx_bin_rebinned] = binCenter
             graphs.x_error_low[idx_bin_rebinned] = binCenter - binEdge_low
             graphs.x_error_high[idx_bin_rebinned] = binEdge_high - binCenter
@@ -351,7 +352,7 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
             graphs.y[2, idx_bin_rebinned] = eff
             graphs.y_error_low[2, idx_bin_rebinned] = eff - eff_low
             graphs.y_error_high[2, idx_bin_rebinned] = eff_high - eff
-    ##print("eff_data = ", [ graphs_a.y[2, i] for i in range(n_bins_rebinned) ])
-    ##print("eff_mc = ",   [ graphs_b.y[2, i] for i in range(n_bins_rebinned) ])
+    print("eff_data = ", [ graphs_a.y[2, i] for i in range(n_bins_rebinned) ])
+    print("eff_mc = ",   [ graphs_b.y[2, i] for i in range(n_bins_rebinned) ])
 
     return tuple(graphs_a.ToRootGraphs(n_bins_rebinned)) + tuple(graphs_b.ToRootGraphs(n_bins_rebinned))
