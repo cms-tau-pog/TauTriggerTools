@@ -122,7 +122,7 @@ for channel in channels:
     with PdfPages('{}_{}.pdf'.format(args.output, channel)) as pdf:
         for wp in working_points:
             for dm in decay_modes:
-                print('Processing {} {} WP DM = {}'.format(channel, wp, dm))
+                ##print('Processing {} {} WP DM = {}'.format(channel, wp, dm))
                 dm_label = '_dm{}'.format(dm) if dm != 'all' else ''
                 name_pattern = '{{}}_{}_{}{}_fit_eff'.format(channel, wp, dm_label)
                 dm_label = '_dm'+ dm if len(dm) > 0 else ''
@@ -133,7 +133,7 @@ for channel in channels:
                 pred_step = 0.1
                 x_low = min(eff_data.x[0] - eff_data.x_error_low[0], eff_mc.x[0] - eff_mc.x_error_low[0])
                 x_high = max(eff_data.x[-1] + eff_data.x_error_high[-1], eff_mc.x[-1] + eff_mc.x_error_high[-1])
-                print("x_low = %1.2f, x_high = %1.2f" % (x_low, x_high))
+                ##print("x_low = %1.2f, x_high = %1.2f" % (x_low, x_high))
                 #x_low, x_high = 20, 1000
                 #x_pred = np.arange(x_low, x_high + pred_step / 2, pred_step)
                 x_array = []
@@ -141,18 +141,18 @@ for channel in channels:
                 x_array.extend([ x_data for x_data in eff_data.x ])
                 x_array.append(x_high)
                 x_pred = np.array(x_array)
-                print("x_pred = ", x_pred)
+                ##print("x_pred = ", x_pred)
 
                 eff_data_fitted = FitResults(eff_data, x_pred)
-                print("eff_data_fitted = ", eff_data_fitted.y_pred)
+                ##print("eff_data_fitted = ", eff_data_fitted.y_pred)
                 eff_mc_fitted = FitResults(eff_mc, x_pred)
-                print("eff_mc_fitted = ", eff_mc_fitted.y_pred)
+                ##print("eff_mc_fitted = ", eff_mc_fitted.y_pred)
 
                 sf = eff_data_fitted.y_pred / eff_mc_fitted.y_pred
-                print("sf = ", sf)
+                ##print("sf = ", sf)
                 sf_sigma = np.sqrt( (eff_data_fitted.sigma_pred / eff_mc_fitted.y_pred) ** 2 \
                          + (eff_data_fitted.y_pred / (eff_mc_fitted.y_pred ** 2) * eff_mc_fitted.sigma_pred ) ** 2 )
-                print("sf_sigma = ", sf_sigma)
+                ##print("sf_sigma = ", sf_sigma)
 
                 fig, (ax, ax_ratio) = plt.subplots(2, 1, figsize=(7, 7), sharex=True,
                                                            gridspec_kw = {'height_ratios':[2, 1]})
