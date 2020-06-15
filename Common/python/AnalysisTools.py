@@ -242,6 +242,19 @@ def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_tota
                 binError_div_binContent = math.sqrt(hists_rebinned_binErrors2[idx_hist][n_bins_rebinned])/hists_rebinned_binContents[idx_hist][n_bins_rebinned]
                 if (idx_hist == 1 or idx_hist == 3) and (binError_div_binContent  > max_binError_div_binContent):
                     is_sufficient_stats = False
+            # CV: require that relative uncertainty (= bin-error/bin-content) is below threshold for all rebinned "passed" and "failed" histograms also
+            if hists_rebinned_binContents[idx_hist][n_bins_rebinned] > 0.:
+                if (idx_hist == 0 or idx_hist == 2) and (binError_div_binContent  > max_binError_div_binContent):
+                    is_sufficient_stats = False
+                if (idx_hist == 1 or idx_hist == 3) and is_sufficient_stats:
+                    binContent_failed = hists_rebinned_binContents[idx_hist][n_bins_rebinned] - hists_rebinned_binContents[idx_hist - 1][n_bins_rebinned]
+                    if binContent_failed > 0.:
+                        binError2_failed = hists_rebinned_binErrors2[idx_hist][n_bins_rebinned] - hists_rebinned_binErrors2[idx_hist - 1][n_bins_rebinned]
+                        binError_div_binContent_failed = math.sqrt(max(0., binError2_failed))/binContent_failed
+                        if binError_div_binContent_failed > max_binError_div_binContent:
+                            is_sufficient_stats = False
+                    else:
+                        is_sufficient_stats = False
         # CV: require that number of events in "passed" histogram is less than or equal to number of events in "total" histogram
         if hists_rebinned_binContents[0][n_bins_rebinned] >= hists_rebinned_binContents[1][n_bins_rebinned] or \
            hists_rebinned_binContents[2][n_bins_rebinned] >= hists_rebinned_binContents[3][n_bins_rebinned]:
