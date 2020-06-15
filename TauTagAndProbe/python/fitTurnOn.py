@@ -178,6 +178,9 @@ for channel in channels:
                                        (eff_mc_fitted.y_pred + eff_mc_fitted.sigma_pred)[::-1]]),
                         alpha=trans, fc=mc_color, ec='None')
 
+                ax.plot( ax.get_xlim(), [ 1.0, 1.0 ], 'r--' )
+                ax_ratio.plot( ax.get_xlim(), [ 1.0, 1.0 ], 'r--' )
+
                 ax_ratio.plot(x_pred, sf, 'b--')
                 ax_ratio.fill(np.concatenate([x_pred, x_pred[::-1]]),
                               np.concatenate([sf - sf_sigma, (sf + sf_sigma)[::-1]]),
@@ -199,10 +202,14 @@ for channel in channels:
 
                 validity_plt = ax.plot( [ ch_validity_thrs[channel] ] * 2, ax.get_ylim(), 'r--' )
                 ax_ratio.plot( [ ch_validity_thrs[channel] ] * 2, ax_ratio.get_ylim(), 'r--' )
+                if len(eff_data.y) == len(eff_mc.y):
+                    ax_ratio.errorbar(eff_data.x, [ eff_data.y[i]/eff_mc.y[i] for i in range(len(eff_data.y)) ], xerr=(eff_data.x_error_low, eff_data.x_error_high),
+                                      yerr=( [ math.sqrt((eff_data.y_error_low[i]/eff_data.y[i])**2 + (eff_mc.y_error_high[i]/eff_mc.y[i])**2) for i in range(len(eff_data.y)) ],
+                                             [ math.sqrt((eff_data.y_error_high[i]/eff_data.y[i])**2 + (eff_mc.y_error_low[i]/eff_mc.y[i])**2) for i in range(len(eff_data.y)) ] ),
+                                      fmt=data_color+'.', markersize=5)
 
                 ax.legend([ plt_data, plt_mc, plt_data_fitted[0], plt_mc_fitted[0], validity_plt[0] ],
                           [ "Data", "MC", "Data fitted", "MC fitted", "Validity range"], fontsize=12, loc='lower right')
-
 
                 plt.subplots_adjust(hspace=0)
                 pdf.savefig(bbox_inches='tight')
