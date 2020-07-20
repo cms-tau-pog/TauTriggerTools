@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import argparse
 from array import array
 import math
@@ -16,8 +15,8 @@ parser.add_argument('--selection', required=True, type=str, help="tau selection"
 parser.add_argument('--output', required=True, type=str, help="output file")
 parser.add_argument('--type', required=True, type=str, default='data', help="Define the sample type among the following: data, ztt_mc, zmm_mc, w_mc, ttbar_mc")
 parser.add_argument('--lumiScale', required=True, type=float, default=1.0, help="LumiScale factor")
-parser.add_argument('--sideband', required=True, type=str, default='OS_low_mT', 
-                    help="Event level selections to define sidebands: OS_low_mT, OS_high_mT, SS_low_mT, SS_high_mT")
+parser.add_argument('--sideband', required=True, type=str, default='signal', 
+                    help="Event level selections to define sidebands: signal, w_enriched, OS_low_mT, OS_high_mT, SS_low_mT, SS_high_mT")
 parser.add_argument('--pu', required=False, type=str, default=None,
                     help="file with the pileup profile for the data taking period")
 args = parser.parse_args()
@@ -34,11 +33,10 @@ ROOT.gInterpreter.Declare('#include "{}TauTagAndProbe/interface/PyInterface.h"'.
 if args.type not in ["data", "ztt_mc", "zmm_mc", "w_mc", "ttbar_mc"]:
     raise RuntimeError("Invalid sample type")
 
-if args.sideband not in ['OS_low_mT','OS_high_mT','SS_low_mT','SS_high_mT']:
+if args.sideband not in ['signal', 'w_enriched', 'OS_low_mT','OS_high_mT','SS_low_mT','SS_high_mT']:
     raise RuntimeError("Invalid sideband")
 sideband = args.sideband
 LumiScale = args.lumiScale
-
 input_vec = ListToStdVector(args.input)
 
 if args.type != 'data':
@@ -87,12 +85,17 @@ sideband_id = ParseEnum(SideBand, args.sideband)
 df = df.Define('type', str(process_id))
 df = df.Define('selection', str(sideband_id))
 
-if sideband == "OS_low_mT":
+if((sideband == "signal") or (sideband == "OS_low_mT")):
     df = df.Filter('''
                    (tau_sel & {}) != 0 && muon_pt > 27 && muon_iso < 0.1 && muon_mt < 30
                    && tau_pt > 20 && abs(tau_eta) < 2.1 && tau_decayMode != 5 && tau_decayMode != 6
                    && vis_mass > 40 && vis_mass < 80 && muon_charge != tau_charge
-                   '''.format(selection_id))
+                   '''.format(selection_id)) ## SIGNAL REGION
+elif sideband == "w_enriched":
+    df = df.Filter(''' 
+                   (tau_sel & {}) != 0 && muon_pt > 27 && muon_iso < 0.1 && muon_mt > 50
+                   && tau_pt > 20 && abs(tau_eta) < 2.1 && tau_decayMode != 5 && tau_decayMode != 6
+                   '''.format(selection_id)) ## (W-ENRICHED SIDEBAND)
 elif sideband == "SS_low_mT":
       df = df.Filter('''
                      (tau_sel & {}) != 0 && muon_pt > 27 && muon_iso < 0.1 && muon_mt < 30
@@ -112,6 +115,7 @@ elif sideband == "SS_high_mT":
                      && vis_mass > 40 && vis_mass < 80 && muon_charge == tau_charge
                      '''.format(selection_id))
 
+
 if selection_id == TauSelection.DeepTau:
     df = df.Filter('(byDeepTau2017v2p1VSmu & (1 << {})) != 0'.format(DiscriminatorWP.Tight))
 
@@ -119,12 +123,22 @@ if args.type == 'data':
      df = df.Define('puWeight', "float(1.)")
      df = df.Define("genEventWeight_signOnly", "0.")
      df = df.Define('lumiScale', str(LumiScale)) 
-     df = df.Define('weight', "1.")
+     if sideband == "w_enriched":
+         df = df.Define('weight', "muon_charge != tau_charge ? 1. : -1.") ## W-ENRICHED SIDEBAND FOR DATA
+         print("w_enriched data yield ", df.Sum("weight").GetValue())
+     else:
+         df = df.Define('weight', "1.")
 else:
+     if sideband == "w_enriched":
+         df = df.Filter('tau_charge + muon_charge == 0') ## W-ENRICHED SIDEBAND FOR MC
      if args.type == 'ztt_mc':
+         print("Applying tau_gen_match == 5 cut to process ztt_mc in sideband {}".format(sideband))
          df = df.Filter('tau_gen_match == 5')
-     elif args.type == 'zmm_mc':
-         df = df.Filter('tau_gen_match != 5')
+     elif( (args.type == 'zmm_mc') or 
+           ( ((sideband == "w_enriched") or (sideband == "signal")) 
+             and ((args.type == 'w_mc') or (args.type == 'ttbar_mc')) ) ):
+         print("Applying tau_gen_match != 5 cut to process {} in sideband {}".format(args.type, sideband))
+         df = df.Filter('tau_gen_match != 5') ## THIS CUT WASN'T APPLIED TO ANY OTHER "NON Z-MM" PROCESS IN ORIGINAL STUDY
      df = df.Define('puWeight', "PileUpWeightProvider::GetDefault().GetWeight(npu)")
      df = df.Define('genEventWeight_signOnly', "genEventWeight >= 0. ? +1. : -1.")
      N_eff = float(df.Sum("genEventWeight_signOnly").GetValue())

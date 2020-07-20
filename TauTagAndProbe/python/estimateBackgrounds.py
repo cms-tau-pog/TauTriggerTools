@@ -13,6 +13,8 @@ parser = argparse.ArgumentParser(description='Estimate backgrounds.')
 parser.add_argument('--input', required=True, type=str, nargs='+', help="input files")
 parser.add_argument('--output-data', required=True, type=str, help="output file prefix for data")
 parser.add_argument('--output-dy-mc', required=True, type=str, help="output file prefix for ZTT MC")
+parser.add_argument('--output-signal', required=False, type=str, default='signal', help="output file prefix for signal region")
+parser.add_argument('--output-w-enriched', required=False, type=str, default='w_enriched', help="output file prefix for w-enriched region")
 parser.add_argument('--mode', required=True, type=str, help="subtract backgrounds from data or add backgrounds to ZTT MC")
 args = parser.parse_args()
 
@@ -56,6 +58,8 @@ selection_OS_low_mT  = 0
 selection_OS_high_mT = 1
 selection_SS_low_mT  = 2
 selection_SS_high_mT = 3
+selection_signal = 4
+selection_w_enriched = 5
 #----------------------------------------------------------------------------------------------------
 
 def get_type(process):
@@ -277,7 +281,29 @@ def makeControlPlot(histograms, var, useLogScale, outputFileName):
     canvas.Print(outputFileName_plot + ".png")
     canvas.Print(outputFileName_plot + ".pdf")
 #----------------------------------------------------------------------------------------------------
-  
+
+#-------------- MAKE ROOT FILES FOR SIGNAL AND W-ENRICHED SIDEBANDS (only in "subtract-from-data" mode)
+if args.mode == "subtract-from-data":
+    df_signal_data = df_input.Filter("selection == {} && type == {}".format(selection_signal, type_data))
+    df_signal_ztt_mc = df_input.Filter("selection == {} && type == {}".format(selection_signal, type_ztt_mc))
+    df_signal_qcd = df_input.Filter("selection == {}".format(selection_SS_low_mT))
+    df_w_enriched_data = df_input.Filter("selection == {} && type == {}".format(selection_w_enriched, type_data))
+    print("Total weight: df_w_enriched_data = ", df_w_enriched_data.Sum("weight").GetValue())
+    df_w_enriched_mc = df_input.Filter('''
+                                       (selection == {} && type == {}) 
+                                       || (selection == {} && type == {}) 
+                                       || (selection == {} && type == {})
+                                       '''.format(selection_w_enriched, type_ttbar_mc, 
+                                                  selection_w_enriched, type_w_mc, 
+                                                  selection_w_enriched, type_zmm_mc))
+    print("Total weight: df_w_enriched_mc = ", df_w_enriched_mc.Sum("weight").GetValue())
+    df_signal_data.Snapshot('events', args.output_signal + '_data.root')
+    df_signal_ztt_mc.Snapshot('events', args.output_signal + '_ztt_mc.root')
+    df_signal_qcd.Snapshot('events', args.output_signal + '_signal_qcd_inputs.root')
+    df_w_enriched_data.Snapshot('events', args.output_w_enriched + '_data.root')
+    df_w_enriched_mc.Snapshot('events', args.output_w_enriched + '_mc.root')
+#----------------------------------------------------------------------------------------------------
+
 # step 1: determine scale-factor for W+jets background in SS region
 df_SS_high_mT = df_input.Filter("selection == %i" % selection_SS_high_mT)
 sum_SS_high_mT = {}
@@ -395,7 +421,8 @@ if args.mode == "add-to-dy-mc":
         histograms['w-mc']     = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_w_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
         histograms['ttbar-mc'] = df_dy_mc_passing_offlineTauSel.Filter("selection == %i && type == %i" % (selection_OS_low_mT, type_ttbar_mc)).Histo1D(hist_model, var, branchname_weight_dy_mc)
         histograms['qcd']      = df_dy_mc_passing_offlineTauSel.Filter("selection == %i" % selection_SS_low_mT).Histo1D(hist_model, var, branchname_weight_dy_mc)
-        outputFileName = "estimateBackgrounds_%s%s_%s.pdf" % (discr_name, wp, var)
+        #outputFileName = "estimateBackgrounds_%s%s_%s.pdf" % (discr_name, wp, var)
+        outputFileName = "%s_%s%s_%s.pdf" % (args.output_dy_mc, discr_name, wp, var)
         makeControlPlot(histograms, var, True, outputFileName)
         print("")
 

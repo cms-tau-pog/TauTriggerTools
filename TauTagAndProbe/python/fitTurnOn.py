@@ -27,10 +27,14 @@ parser.add_argument('--input', required=True, type=str, help="ROOT file with tur
 parser.add_argument('--output', required=True, type=str, help="output file prefix")
 parser.add_argument('--channels', required=False, type=str, default='etau,mutau,ditau', help="channels to process")
 parser.add_argument('--decay-modes', required=False, type=str, default='all,0,1,10,11', help="decay modes to process")
+parser.add_argument('--mode', required=True, type=str, default='adaptive', help="Choose from one of these 2 bin schemes: 'fixed' or 'adaptive'")
 parser.add_argument('--working-points', required=False, type=str,
                     default='VVVLoose,VVLoose,VLoose,Loose,Medium,Tight,VTight,VVTight',
                     help="working points to process")
 args = parser.parse_args()
+
+if((args.mode != "adaptive") and (args.mode != "fixed")): 
+    raise ValueError("Invalid configuration parameter = '%s'!!" % (args.mode))
 
 def MinTarget(dy, eff):
     y = np.cumsum(dy)
@@ -110,6 +114,7 @@ class FitResults:
             results.append(fn[0] * (1-step) + fn[1] * step)
         return tuple(results)
 
+mode = args.mode
 channels = args.channels.split(',')
 decay_modes = args.decay_modes.split(',')
 working_points = args.working_points.split(',')
@@ -122,26 +127,37 @@ for channel in channels:
     with PdfPages('{}_{}.pdf'.format(args.output, channel)) as pdf:
         for wp in working_points:
             for dm in decay_modes:
-                ##print('Processing {} {} WP DM = {}'.format(channel, wp, dm))
+                print('Processing {} {} WP DM = {}'.format(channel, wp, dm))
                 dm_label = '_dm{}'.format(dm) if dm != 'all' else ''
                 name_pattern = '{{}}_{}_{}{}_fit_eff'.format(channel, wp, dm_label)
                 dm_label = '_dm'+ dm if len(dm) > 0 else ''
+                #print("name_pattern.format(data)", name_pattern.format('data'))
                 eff_data_root = input_file.Get(name_pattern.format('data'))
+                #print("name_pattern.format(data)", name_pattern.format('data'))
                 eff_mc_root = input_file.Get(name_pattern.format('mc'))
                 eff_data = Graph(root_graph=eff_data_root)
+                print("type(eff_data): ", type(eff_data))
                 eff_mc = Graph(root_graph=eff_mc_root)
+                print("type(eff_mc): ", type(eff_mc))
                 pred_step = 0.1
-                x_low = min(eff_data.x[0] - eff_data.x_error_low[0], eff_mc.x[0] - eff_mc.x_error_low[0])
-                x_high = max(eff_data.x[-1] + eff_data.x_error_high[-1], eff_mc.x[-1] + eff_mc.x_error_high[-1])
-                ##print("x_low = %1.2f, x_high = %1.2f" % (x_low, x_high))
-                #x_low, x_high = 20, 1000
-                #x_pred = np.arange(x_low, x_high + pred_step / 2, pred_step)
-                x_array = []
-                x_array.append(x_low)
-                x_array.extend([ x_data for x_data in eff_data.x ])
-                x_array.append(x_high)
-                x_pred = np.array(x_array)
-                ##print("x_pred = ", x_pred)
+
+                if(mode == "adaptive"):     ## ----Christian's adaptive binning scheme ------
+                    print("Using Adaptive binning")
+                    x_low = min(eff_data.x[0] - eff_data.x_error_low[0], eff_mc.x[0] - eff_mc.x_error_low[0])
+                    x_high = max(eff_data.x[-1] + eff_data.x_error_high[-1], eff_mc.x[-1] + eff_mc.x_error_high[-1])
+                    x_array = []
+                    x_array.append(x_low)
+                    x_array.extend([ x_data for x_data in eff_data.x ])
+                    x_array.append(x_high)
+                    x_pred = np.array(x_array)
+                elif(mode == "fixed"): ## ----- Konstantin's fixed binning scheme ------
+                    print("Using Fixed binning: {}".format(pred_step))
+                    x_low, x_high = 20, 1000 ## DEF LINE
+                    #x_low, x_high = 20, 200  ## MY LINE
+                    x_pred = np.arange(x_low, x_high + pred_step / 2, pred_step)
+                
+                print("x_low = %1.2f, x_high = %1.2f" % (x_low, x_high))
+                print("x_pred = ", x_pred)
 
                 eff_data_fitted = FitResults(eff_data, x_pred)
                 ##print("eff_data_fitted = ", eff_data_fitted.y_pred)
@@ -202,11 +218,16 @@ for channel in channels:
 
                 validity_plt = ax.plot( [ ch_validity_thrs[channel] ] * 2, ax.get_ylim(), 'r--' )
                 ax_ratio.plot( [ ch_validity_thrs[channel] ] * 2, ax_ratio.get_ylim(), 'r--' )
-                if len(eff_data.y) == len(eff_mc.y):
-                    ax_ratio.errorbar(eff_data.x, [ eff_data.y[i]/eff_mc.y[i] for i in range(len(eff_data.y)) ], xerr=(eff_data.x_error_low, eff_data.x_error_high),
-                                      yerr=( [ math.sqrt((eff_data.y_error_low[i]/eff_data.y[i])**2 + (eff_mc.y_error_high[i]/eff_mc.y[i])**2) for i in range(len(eff_data.y)) ],
-                                             [ math.sqrt((eff_data.y_error_high[i]/eff_data.y[i])**2 + (eff_mc.y_error_low[i]/eff_mc.y[i])**2) for i in range(len(eff_data.y)) ] ),
-                                      fmt=data_color+'.', markersize=5)
+                
+                if(mode == "adaptive"):  ## ----Christian's fix for equal eff. in data and mc ------  
+                    print("Applying the fix for the case when eff. lists in data and mc have same lengths")
+                    if len(eff_data.y) == len(eff_mc.y):
+                        ax_ratio.errorbar(eff_data.x, [ eff_data.y[i]/eff_mc.y[i] for i in range(len(eff_data.y)) ], xerr=(eff_data.x_error_low, eff_data.x_error_high),
+                                          yerr=( [ math.sqrt((eff_data.y_error_low[i]/eff_data.y[i])**2 + (eff_mc.y_error_high[i]/eff_mc.y[i])**2) for i in range(len(eff_data.y)) ],
+                                                 [ math.sqrt((eff_data.y_error_high[i]/eff_data.y[i])**2 + (eff_mc.y_error_low[i]/eff_mc.y[i])**2) for i in range(len(eff_data.y)) ] ),
+                                          fmt=data_color+'.', markersize=5)
+                elif(mode == "fixed"):
+                    print("Not applying the fix for the case when eff. lists in data and mc have same lengths")
 
                 ax.legend([ plt_data, plt_mc, plt_data_fitted[0], plt_mc_fitted[0], validity_plt[0] ],
                           [ "Data", "MC", "Data fitted", "MC fitted", "Validity range"], fontsize=12, loc='lower right')
@@ -218,15 +239,24 @@ for channel in channels:
                 out_name_pattern = '{{}}_{}_{}{}_{{}}'.format(channel, wp, dm_label)
                 output_file.WriteTObject(eff_data_root, out_name_pattern.format('data', 'eff'), 'Overwrite')
                 output_file.WriteTObject(eff_mc_root, out_name_pattern.format('mc', 'eff'), 'Overwrite')
-                bin_edges = []
-                for i in range(len(eff_data.x)):
-                    if i == 0:
-                        bin_edges.append(eff_data.x[i] - eff_data.x_error_low[i])
-                    bin_edges.append(eff_data.x[i] + eff_data.x_error_high[i])
-                eff_data_fitted_hist = Histogram.CreateTH1(eff_data_fitted.y_pred, bin_edges,
-                                                           eff_data_fitted.sigma_pred, fixed_step=False)
-                eff_mc_fitted_hist = Histogram.CreateTH1(eff_mc_fitted.y_pred, bin_edges,
-                                                         eff_mc_fitted.sigma_pred, fixed_step=False)
+                if(mode == "adaptive"): ## ----Christian's adaptive binning scheme -----
+                    bin_edges = []
+                    for i in range(len(eff_data.x)):
+                        if i == 0:
+                            bin_edges.append(eff_data.x[i] - eff_data.x_error_low[i])
+                        bin_edges.append(eff_data.x[i] + eff_data.x_error_high[i])
+                    eff_data_fitted_hist = Histogram.CreateTH1(eff_data_fitted.y_pred, bin_edges,
+                                                               eff_data_fitted.sigma_pred, fixed_step=False)
+                    eff_mc_fitted_hist = Histogram.CreateTH1(eff_mc_fitted.y_pred, bin_edges,
+                                                             eff_mc_fitted.sigma_pred, fixed_step=False)    
+                elif(mode == "fixed"): ##----Konstantin's fixed binning case ------------------------ 
+                    bin_edges = [x_low, x_high]
+                    print("bin_edges ", bin_edges)
+                    eff_data_fitted_hist = Histogram.CreateTH1(eff_data_fitted.y_pred, bin_edges,
+                                                               eff_data_fitted.sigma_pred, fixed_step=True)
+                    eff_mc_fitted_hist = Histogram.CreateTH1(eff_mc_fitted.y_pred, bin_edges,
+                                                             eff_mc_fitted.sigma_pred, fixed_step=True)
+
                 sf_fitted_hist = eff_data_fitted_hist.Clone()
                 sf_fitted_hist.Divide(eff_mc_fitted_hist)
                 output_file.WriteTObject(eff_data_fitted_hist, out_name_pattern.format('data', 'fitted'), 'Overwrite')

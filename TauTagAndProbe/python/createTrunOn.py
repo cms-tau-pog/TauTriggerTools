@@ -42,24 +42,13 @@ def CreateBins(max_pt, for_fitting):
     bins = None
     epsilon = 1.e-3 # CV: increase x-axis range a little bit, to make sure that upper limit (120 GeV) gets added to list of bin-edges
     if for_fitting:
-        #step=1
-        #return np.arange(20, 1000+step, step=step), False
-        bins = np.arange(20, 40, step=1)
+        bins = np.arange(20, 40, step=1) 
         bins = np.append(bins, np.arange(40, 60, step=2))
         bins = np.append(bins, np.arange(60, 80, step=5))
         bins = np.append(bins, np.arange(80, 120, step=10))
         bins = np.append(bins, np.arange(120, 160, step=20))
         bins = np.append(bins, np.arange(160, 200+epsilon, step=40))
     else:
-        #bins = np.arange(20, 40, step=4)
-        #bins = np.append(bins, np.arange(40, 60, step=5))
-        #bins = np.append(bins, np.arange(60, 100, step=10))
-        #high_pt_bins = [ 100, 150, 200, 300, 400, 500, 650, 800, 1000 ]
-        #n = 0
-        #while n < len(high_pt_bins) and high_pt_bins[n] < max_pt:
-        #    n += 1
-        #use_logx = max_pt > 200
-        #return np.append(bins, high_pt_bins[0:n+1]), use_logx
         bins = np.arange(20, 40, step=1)
         bins = np.append(bins, np.arange(40, 60, step=2))
         bins = np.append(bins, np.arange(60, 80, step=5))
@@ -85,7 +74,6 @@ def CreateHistograms(input_file, branchname_weight,
     ##print("<CreateHistograms>:")
     ##print(" input_file = '%s'" % input_file)
     ##print(" branchname_weight = '%s'" % branchname_weight)
-
     df = ROOT.RDataFrame('events', input_file)
     turnOn_data = {}
     dm_labels = {}
@@ -166,7 +154,7 @@ for dm in decay_modes:
                 else:
                     passed_data, total_data = turnOn_data.hist_passed.GetPtr(), turnOn_data.hist_total.GetPtr()
                     FixEfficiencyBins(passed_data, total_data)
-                    eff_data = ROOT.TEfficiency(passed_data, total_data)
+                    eff_data = ROOT.TEfficiency(passed_data, total_data) 
                     passed_mc, total_mc = turnOn_mc.hist_passed.GetPtr(), turnOn_mc.hist_total.GetPtr()
                     FixEfficiencyBins(passed_mc, total_mc)
                     eff_mc = ROOT.TEfficiency(passed_mc, total_mc)

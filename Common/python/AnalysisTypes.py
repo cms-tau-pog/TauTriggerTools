@@ -47,3 +47,5 @@ class SideBand:
     OS_high_mT = 1
     SS_low_mT = 2 
     SS_high_mT = 3
+    signal = 4
+    w_enriched = 5
