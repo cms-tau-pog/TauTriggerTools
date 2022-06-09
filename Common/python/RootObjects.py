@@ -8,11 +8,11 @@ class Histogram:
         self.values = np.zeros(n_bins)
         self.errors = np.zeros(n_bins)
         self.edges = np.zeros(n_bins + 1)
-        for n in range(n_bins):
-            self.values[n] = th1_hist.GetBinContent(n + 1)
-            self.edges[n] = th1_hist.GetBinLowEdge(n + 1)
-            self.errors[n] = th1_hist.GetBinError(n + 1)
-        self.edges[n_bins] = th1_hist.GetBinLowEdge(n_bins + 1)
+        for i in range(n_bins):
+            self.values[i] = th1_hist.GetBinContent(i + 1)
+            self.edges[i] = th1_hist.GetXaxis().GetBinLowEdge(i + 1)
+            self.errors[i] = th1_hist.GetBinError(i + 1)
+        self.edges[n_bins] = th1_hist.GetXaxis().GetBinUpEdge(n_bins)
 
     @staticmethod
     def CreateTH1(values, edges, errors, fixed_step=False):

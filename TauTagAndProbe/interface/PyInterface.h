@@ -134,3 +134,168 @@ private:
 
 std::unique_ptr<TriggerMatchProvider> TriggerMatchProvider::default_provider;
 std::unique_ptr<PileUpWeightProvider> PileUpWeightProvider::default_provider;
+
+//----------------------------------------------------------------------------------------------------
+// define integer constants
+//
+// WARNING: the definition of these constants needs to match the definition in TauTriggerTools/TauTagAndProbe/python/estimateBackgrounds.py !!
+//
+const int type_data            = 0;
+const int type_ztt_mc          = 1;
+const int type_zmm_mc          = 2;
+const int type_w_mc            = 3;
+const int type_ttbar_mc        = 4;
+
+const int selection_OS_low_mT  = 0;
+const int selection_OS_high_mT = 1;
+const int selection_SS_low_mT  = 2;
+const int selection_SS_high_mT = 3;
+//----------------------------------------------------------------------------------------------------
+
+class final_weight_data 
+{
+public:
+  final_weight_data(float sf_qcd_SS_to_OS, float sf_w_mc_OS, float sf_w_mc_SS) 
+    : sf_qcd_SS_to_OS_(sf_qcd_SS_to_OS)
+    , sf_w_mc_OS_(sf_w_mc_OS)
+    , sf_w_mc_SS_(sf_w_mc_SS)
+  {}
+ 
+  float operator()(int selection, int type, float weight) const
+  {
+    float final_weight = 0.;
+    if ( selection == selection_OS_low_mT && type == type_data )
+    {
+      final_weight = 1.;
+    } 
+    else if ( selection == selection_SS_low_mT ) 
+    {
+      final_weight = sf_qcd_SS_to_OS_;
+      if ( type == type_data ) 
+      {
+        final_weight *= -1.; 
+      }
+      else
+      {
+        final_weight *= +1. * weight;
+        if ( type == type_w_mc ) 
+        {
+          final_weight *= sf_w_mc_SS_;
+        }
+      }
+    }
+    else if ( selection == selection_OS_low_mT && (type == type_zmm_mc || type == type_w_mc || type == type_ttbar_mc) ) 
+    {
+      final_weight = -1. * weight;
+      if ( type == type_w_mc )
+      {
+        final_weight *= sf_w_mc_OS_;
+      }
+    }
+    else  
+    {
+      ostringstream error_message;
+      error_message << "Invalid function arguments: selection = '" << selection << "', type = '" << type << "' !!";
+      throw std::runtime_error(error_message.str());
+    }
+    return final_weight;
+  }
+
+  static final_weight_data& Initialize(float sf_qcd_SS_to_OS, float sf_w_mc_OS, float sf_w_mc_SS)
+  {
+    default_provider.reset(new final_weight_data(sf_qcd_SS_to_OS, sf_w_mc_OS, sf_w_mc_SS));
+    return GetDefault();
+  }
+
+  static final_weight_data& GetDefault()
+  {
+    if(!default_provider)
+      throw std::runtime_error("Default final_weight_data is not initialized.");
+    return *default_provider;
+  }
+
+
+private:
+  static std::unique_ptr<final_weight_data> default_provider;
+
+private:
+  float sf_qcd_SS_to_OS_;
+  float sf_w_mc_OS_;
+  float sf_w_mc_SS_;
+};
+
+class final_weight_dy_mc 
+{
+public:
+  final_weight_dy_mc(float sf_qcd_SS_to_OS, float sf_w_mc_OS, float sf_w_mc_SS) 
+    : sf_qcd_SS_to_OS_(sf_qcd_SS_to_OS)
+    , sf_w_mc_OS_(sf_w_mc_OS)
+    , sf_w_mc_SS_(sf_w_mc_SS)
+  {}
+ 
+  float operator()(int selection, int type, float weight) const
+  {
+    float final_weight = 0.;
+    if ( selection == selection_OS_low_mT and type == type_ztt_mc )
+    {
+      final_weight = +1. * weight;
+    } 
+    else if ( selection == selection_SS_low_mT )
+    {
+      final_weight = sf_qcd_SS_to_OS_;
+      if ( type == type_data )
+      {
+        final_weight *= +1.;
+      }
+      else  
+      {
+        final_weight *= -1. * weight;
+        if ( type == type_w_mc )
+        {
+          final_weight *= sf_w_mc_SS_;
+        }
+      }
+    }
+    else if ( selection == selection_OS_low_mT && (type == type_zmm_mc || type == type_w_mc || type == type_ttbar_mc) )
+    {
+      final_weight = +1. * weight;
+      if ( type == type_w_mc )
+      {
+        final_weight *= sf_w_mc_OS_;
+      }
+    }
+    else  
+    {
+      ostringstream error_message;
+      error_message << "Invalid function arguments: selection = '" << selection << "', type = '" << type << "' !!";
+      throw std::runtime_error(error_message.str());
+    }
+    return final_weight;
+  }
+
+  static final_weight_dy_mc& Initialize(float sf_qcd_SS_to_OS, float sf_w_mc_OS, float sf_w_mc_SS)
+  {
+    default_provider.reset(new final_weight_dy_mc(sf_qcd_SS_to_OS, sf_w_mc_OS, sf_w_mc_SS));
+    return GetDefault();
+  }
+
+  static final_weight_dy_mc& GetDefault()
+  {
+    if(!default_provider)
+      throw std::runtime_error("Default final_weight_dy_mc is not initialized.");
+    return *default_provider;
+  }
+
+
+private:
+  static std::unique_ptr<final_weight_dy_mc> default_provider;
+
+private:
+  float sf_qcd_SS_to_OS_;
+  float sf_w_mc_OS_;
+  float sf_w_mc_SS_;
+};
+
+std::unique_ptr<final_weight_data> final_weight_data::default_provider;
+std::unique_ptr<final_weight_dy_mc> final_weight_dy_mc::default_provider;
+  

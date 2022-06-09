@@ -34,10 +34,29 @@ def KatzLog(passed, total):
     sigma = math.sqrt(sigma2)
     return (theta * math.exp(-sigma), theta * math.exp(sigma))
 
+def data_eff_confint(n_passed, n_total, n_passed_err, n_total_err):
+    #print("<data_eff_confint>:")
+    #print(" n_passed = %1.2f +/- %1.2f" % (n_passed, n_passed_err))
+    #print(" n_total = %1.2f +/- %1.2f" % (n_total, n_total_err))
+    hist_passed = ROOT.TH1D("histogram_passed", "histogram_passed", 1, -0.5, +0.5)
+    hist_passed.SetBinContent(1, n_passed)
+    hist_passed.SetBinError(1, n_passed_err)
+    hist_total = ROOT.TH1D("histogram_total", "histogram_total", 1, -0.5, +0.5)
+    hist_total.SetBinContent(1, n_total)
+    hist_total.SetBinError(1, n_total_err)
+    eff = ROOT.TEfficiency(hist_passed, hist_total)
+    eff.SetStatisticOption(ROOT.TEfficiency.kFWilson)
+    eff_low = eff.GetEfficiency(1) - eff.GetEfficiencyErrorLow(1)
+    eff_high = eff.GetEfficiency(1) + eff.GetEfficiencyErrorUp(1)
+    return eff_low, eff_high
+
 def weighted_eff_confint_freqMC(n_passed, n_failed, n_passed_err, n_failed_err, alpha=1-0.68, n_gen=100000,
                                 max_gen_iters=100, min_stat=80000, seed=42, symmetric=True):
-    assert n_passed > 0
-    assert n_failed > 0
+    #print("<weighted_eff_confint_freqMC>:")
+    #print(" n_passed = %1.2f +/- %1.2f" % (n_passed, n_passed_err))
+    #print(" n_failed = %1.2f +/- %1.2f" % (n_failed, n_failed_err))
+    assert n_passed >= 0
+    assert n_failed >= 0
     assert n_passed_err >= 0
     assert n_failed_err >= 0
     assert alpha > 0 and alpha < 1
@@ -113,7 +132,7 @@ def RemoveOverflowBins(hist):
         hist.SetBinContent(bin, 0)
         hist.SetBinError(bin, 0)
 
-def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.01):
+def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.65):
     has_fixes = False
     integral = hist.Integral()
     if integral <= 0:
@@ -122,7 +141,7 @@ def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.01):
         x = hist.GetBinContent(n)
         if x < 0:
             x_err = hist.GetBinError(n)
-            if x + x_err < 0:
+            if x + 3.*x_err < 0:
                 raise RuntimeError("Yield in bin {} is {} +- {}. Negative bin for which the yield is not statistically"
                                    " compatible with 0 can't be fixed.".format(n, x, x_err))
             hist.SetBinError(n, math.sqrt(x_err ** 2 + x ** 2))
@@ -132,6 +151,7 @@ def FixNegativeBins(hist, fix_integral=False, max_rel_shift=0.01):
         new_integral = hist.Integral()
         total_rel_shift = abs(new_integral - integral) / integral
         if total_rel_shift > max_rel_shift:
+            print("total_rel_shift: %1.2f, max_rel_shift %1.2f" % (total_rel_shift, max_rel_shift))
             raise RuntimeError("The overal shift to the integral due to negative bins = {} is above the allowed limit" \
                                " = {}.".format(total_rel_shift, max_rel_shift))
         if fix_integral:
@@ -144,69 +164,233 @@ def FixEfficiencyBins(hist_passed, hist_total, remove_overflow=True):
         RemoveOverflowBins(hist_total)
     FixNegativeBins(hist_passed)
     FixNegativeBins(hist_total)
-    for n in range(hist_total.GetNbinsX() + 2):
-        if hist_passed.GetBinLowEdge(n) != hist_total.GetBinLowEdge(n):
-            raise RuntimeError("Incompatible passed and total histograms")
-        delta = hist_passed.GetBinContent(n) - hist_total.GetBinContent(n)
+    for i in range(hist_total.GetNbinsX() + 2):
+        if hist_passed.GetBinLowEdge(i) != hist_total.GetBinLowEdge(i):
+            raise ValueError("Histograms passed as function arguments have incompatible binning !!")
+        delta = hist_passed.GetBinContent(i) - hist_total.GetBinContent(i)
         if delta > 0:
-            if delta > hist_passed.GetBinError(n):
-                raise RuntimeError("The number of passed events = {} +/- {} is above the total number events" \
-                                   " = {} +/- {} in bin {} [{}, {})" \
-                                   .format(hist_passed.GetBinContent(n), hist_passed.GetBinError(n),
-                                           hist_total.GetBinContent(n), hist_total.GetBinError(n), n,
-                                           hist_total.GetBinLowEdge(n),
-                                           hist_total.GetBinLowEdge(n) + hist_total.GetBinWidth(n)))
-            hist_passed.SetBinError(n, math.sqrt(hist_passed.GetBinError(n) ** 2 + delta ** 2))
-            hist_passed.SetBinContent(n, hist_total.GetBinContent(n))
+            if delta > hist_passed.GetBinError(i):
+                print("Warning: The number of passed events = {} +/- {} is above the total number events" \
+                                   " = {} +/- {} in bin {} [{}, {})." \
+                                   .format(hist_passed.GetBinContent(i), hist_passed.GetBinError(i),
+                                           hist_total.GetBinContent(i), hist_total.GetBinError(i), i,
+                                           hist_total.GetBinLowEdge(i),
+                                           hist_total.GetBinLowEdge(i) + hist_total.GetBinWidth(i)))
+                print("         Setting bin-content of 'pass' histogram for bin #{} to {}.".format(i, hist_total.GetBinContent(i)))
+            hist_passed.SetBinError(i, math.sqrt(hist_passed.GetBinError(i) ** 2 + delta ** 2))
+            hist_passed.SetBinContent(i, hist_total.GetBinContent(i))
 
-def AutoRebinAndEfficiency(hist_passed, hist_total, bin_scan_pairs):
-    passed, total = 0, 1
-    hist = [ hist_passed, hist_total ]
-    for n in range(len(hist)):
-        if type(hist[n]) != Histogram:
-            hist[n] = Histogram(hist[n])
+def dumpHistogram(histName, n_bins, hist_binEdges, hist_binContents, hist_binErrors2):
+    if len(hist_binEdges) != (n_bins + 1) or len(hist_binContents) != n_bins or len(hist_binErrors2) != n_bins:
+       raise ValueError("Internal error !!")
+    print("histogram = %s" % histName)
+    print(" bin-contents = ", hist_binContents)
+    print(" bin-errors = ", [ math.sqrt(hist_binError2) for hist_binError2 in hist_binErrors2])
+    ##print(" bin-error/bin-content = ", [ math.sqrt(hist_binErrors2[i])/hist_binContents[i] if hist_binContents[i] > 0. else 0.5 for i in range(n_bins) ])
 
-    n_bins = hist_total.GetNbinsX()
-    graphs = MultiGraph(len(hist) + 1, n_bins)
+def AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_total_b, max_binError_div_binContent = 0.50):
 
-    n = 0
-    n_output_points = 0
-    abs_min_total_yield = bin_scan_pairs[-1][-1]
-    while n < n_bins:
-        if np.sum(hist[total].values[n:]) < abs_min_total_yield:
-            break
-        for max_bin_size, max_rel_error in bin_scan_pairs:
-            bin_created=False
-            v_counter = np.zeros(len(hist))
-            w2_counter = np.zeros(len(hist))
-            k = 0
-            while k < max_bin_size and n + k < n_bins:
-                for sel_id in range(len(hist)):
-                    v_counter[sel_id] += hist[sel_id].values[n+k]
-                    w2_counter[sel_id] += hist[sel_id].errors[n+k] ** 2
-                if v_counter[total] > 0 and math.sqrt(w2_counter[total]) / v_counter[total] < max_rel_error \
-                   and v_counter[passed] > 0 and v_counter[passed] < v_counter[total]:
-                   #if v_counter[total] >= min_yield and v_counter[passed] > 0 and v_counter[passed] < v_counter[total]:
-                    eff = v_counter[passed] / v_counter[total]
-                    x_avg = np.average(hist[total].edges[n:n+k+1], weights=hist[total].values[n:n+k+1])
-                    graphs.x[n_output_points] = x_avg
-                    graphs.x_error_low[n_output_points] = x_avg - hist[total].edges[n]
-                    graphs.x_error_high[n_output_points] = hist[total].edges[n+k+1] - x_avg
-                    for sel_id in range(len(hist)):
-                        graphs.y[sel_id, n_output_points] = v_counter[sel_id]
-                        graphs.y_error_low[sel_id, n_output_points] = math.sqrt(w2_counter[sel_id])
-                        graphs.y_error_high[sel_id, n_output_points] = math.sqrt(w2_counter[sel_id])
-                    graphs.y[len(hist), n_output_points] = eff
-                    eff_down, eff_up = weighted_eff_confint_freqMC(v_counter[passed],
-                                                                   v_counter[total] - v_counter[passed],
-                                                                   math.sqrt(w2_counter[passed]),
-                                                                   math.sqrt(w2_counter[total] - w2_counter[passed]))
-                    graphs.y_error_low[len(hist), n_output_points] = eff - eff_down
-                    graphs.y_error_high[len(hist), n_output_points] = eff_up - eff
-                    n_output_points += 1
-                    bin_created = True
-                    break
-                k += 1
-            if bin_created: break
-        n += k + 1
-    return tuple(graphs.ToRootGraphs(n_output_points))
+    ##print("<AutoRebinAndEfficiency>:")
+
+    n_bins = hist_passed_a.GetNbinsX()
+    if hist_total_a.GetNbinsX() != n_bins or hist_passed_b.GetNbinsX() != n_bins or hist_total_b.GetNbinsX() != n_bins:
+        raise ValueError("Histograms passed as function arguments have incompatible binning !!")
+
+    # CV: convert histograms from ROOT's TH1 to Konstantin's Histogram type
+    #    (defined in TauTriggerTools/Common/python/RootObjects.py)
+    myhists = [ hist_passed_a, hist_total_a, hist_passed_b, hist_total_b ]   
+    for i in range(len(myhists)):
+        if type(myhists[i]) != Histogram:
+            myhists[i] = Histogram(myhists[i])
+    myhist_passed_a = myhists[0]
+    myhist_total_a  = myhists[1]
+    myhist_passed_b = myhists[2]
+    myhist_total_b  = myhists[3]
+
+    ##print("BEFORE rebinning:")
+    ##print("#bins = %i" % n_bins)
+    ##print(" bin-edges = ", myhist_total_a.edges)
+    ##dumpHistogram("data, passed", n_bins, myhist_total_a.edges, myhist_passed_a.values, myhist_passed_a.errors)
+    ##dumpHistogram("data, total", n_bins, myhist_total_a.edges, myhist_total_a.values, myhist_total_a.errors)
+    ##print("efficiency (data) = ", [ myhist_passed_a.values[i]/myhist_total_a.values[i] for i in range(n_bins) ])
+    ##dumpHistogram("mc, passed", n_bins, myhist_total_a.edges, myhist_passed_b.values, myhist_passed_b.errors)
+    ##dumpHistogram("mc, total", n_bins, myhist_total_a.edges, myhist_total_b.values, myhist_total_b.errors)
+    ##print("efficiency (mc) = ", [ myhist_passed_b.values[i]/myhist_total_b.values[i] for i in range(n_bins) ])
+
+    hists_rebinned_binContents = [ [], [], [], [] ]
+    hists_rebinned_binErrors2  = [ [], [], [], [] ]    
+    hist_rebinned_binEdges = []
+    n_bins_rebinned = 0
+
+    is_unmerged_bin = False
+
+    # merge bins of the original histogram from left to right
+    # until sufficient event statistics is accumulated in each bin of each rebinned histogram
+    for idx_bin in range(n_bins):
+
+        binEdge = myhist_passed_a.edges[idx_bin]
+        if abs(myhist_total_a.edges[idx_bin] - binEdge) > 1.e-1 or abs(myhist_passed_b.edges[idx_bin] - binEdge) > 1.e-1 or abs(myhist_total_b.edges[idx_bin] - binEdge) > 1.e-1:
+            raise ValueError("Histograms passed as function arguments have incompatible binning !!")
+
+        if idx_bin == 0:
+            hist_rebinned_binEdges.append(myhist_total_a.edges[idx_bin])
+
+        is_sufficient_stats = True
+        for idx_hist in range(len(myhists)):
+            binContent = myhists[idx_hist].values[idx_bin]
+            if len(hists_rebinned_binContents[idx_hist]) < (n_bins_rebinned + 1):
+                hists_rebinned_binContents[idx_hist].append(0.)
+            hists_rebinned_binContents[idx_hist][n_bins_rebinned] += binContent
+
+            binError2 = myhists[idx_hist].errors[idx_bin] ** 2
+            if len(hists_rebinned_binErrors2[idx_hist]) < (n_bins_rebinned + 1):
+                hists_rebinned_binErrors2[idx_hist].append(0.)
+            hists_rebinned_binErrors2[idx_hist][n_bins_rebinned] += binError2
+
+            # CV: require that all rebinned histograms have non-negative bin-contents
+            if not hists_rebinned_binContents[idx_hist][n_bins_rebinned] >= 0.:
+                is_sufficient_stats = False
+            # CV: require that all rebinned "total" histograms have positive bin-contents
+            if (idx_hist == 1 or idx_hist == 3) and not hists_rebinned_binContents[idx_hist][n_bins_rebinned] > 0.:             
+                is_sufficient_stats = False
+            # CV: require that relative uncertainty (= bin-error/bin-content) is below threshold for all rebinned "total" histograms
+            #    (and bin contains at least one evemt, to make condition on bin-error/bin-content well-defined)
+            if hists_rebinned_binContents[idx_hist][n_bins_rebinned] > 1.:
+                binError_div_binContent = math.sqrt(hists_rebinned_binErrors2[idx_hist][n_bins_rebinned])/hists_rebinned_binContents[idx_hist][n_bins_rebinned]
+                if (idx_hist == 1 or idx_hist == 3) and (binError_div_binContent  > max_binError_div_binContent):
+                    is_sufficient_stats = False
+            # CV: require that relative uncertainty (= bin-error/bin-content) is below 1.5times threshold for all rebinned "passed" and "failed" histograms also
+            #    (and bins contains at least one evemt, to make conditions on bin-error/bin-content well-defined)
+            if hists_rebinned_binContents[idx_hist][n_bins_rebinned] > 1.:
+                if (idx_hist == 0 or idx_hist == 2) and (binError_div_binContent  > 1.5*max_binError_div_binContent):
+                    is_sufficient_stats = False
+                if (idx_hist == 1 or idx_hist == 3) and is_sufficient_stats:
+                    binContent_failed = hists_rebinned_binContents[idx_hist][n_bins_rebinned] - hists_rebinned_binContents[idx_hist - 1][n_bins_rebinned]
+                    if binContent_failed > 0.:
+                        binError2_failed = hists_rebinned_binErrors2[idx_hist][n_bins_rebinned] - hists_rebinned_binErrors2[idx_hist - 1][n_bins_rebinned]
+                        binError_div_binContent_failed = math.sqrt(max(0., binError2_failed))/binContent_failed
+                        if binError_div_binContent_failed > 1.5*max_binError_div_binContent:
+                            is_sufficient_stats = False
+                    else:
+                        is_sufficient_stats = False
+        # CV: require that number of events in "passed" histogram is less than or equal to number of events in "total" histogram
+        if hists_rebinned_binContents[0][n_bins_rebinned] >= hists_rebinned_binContents[1][n_bins_rebinned] or \
+           hists_rebinned_binContents[2][n_bins_rebinned] >= hists_rebinned_binContents[3][n_bins_rebinned]:
+            is_sufficient_stats = False
+        if is_sufficient_stats:
+            hist_rebinned_binEdges.append(myhist_total_a.edges[idx_bin + 1])
+            n_bins_rebinned += 1
+            is_unmerged_bin = False
+        else:
+            is_unmerged_bin = True
+
+    # merge events in last two bins in case last bin does not have sufficient event statistics
+    if is_unmerged_bin:
+        if n_bins_rebinned >= 1:
+            # CV: merge bins of the rebinned histogram from right to left 
+            #     until sufficient event statistics is accumulated in each bin 
+            n_bins_rebinned += 1
+            keep_merging = True            
+            while keep_merging and n_bins_rebinned >= 2:
+                keep_merging = False
+                for idx_hist in range(len(myhists)):
+                    hists_rebinned_binContents[idx_hist][n_bins_rebinned - 2] += hists_rebinned_binContents[idx_hist][n_bins_rebinned - 1]
+                    hists_rebinned_binContents[idx_hist].pop()
+                    if hists_rebinned_binContents[idx_hist][n_bins_rebinned - 2] < 0.:
+                        keep_merging = True
+
+                    hists_rebinned_binErrors2[idx_hist][n_bins_rebinned - 2] += hists_rebinned_binErrors2[idx_hist][n_bins_rebinned - 1]
+                    hists_rebinned_binErrors2[idx_hist].pop()
+                hist_rebinned_binEdges.pop()
+                if not is_unmerged_bin:
+                    print("Warning: Negative number of events encountered in the rightmost bin.")
+                    print("         Merging the two rightmost bins...")
+                n_bins_rebinned -= 1
+                is_unmerged_bin = False
+        else:
+            # CV: always create at least one bin, even if the event statistics in that bin is not sufficient
+            n_bins_rebinned = 1
+
+        if len(hist_rebinned_binEdges) < (n_bins_rebinned + 1):
+            hist_rebinned_binEdges.append(0.)
+        hist_rebinned_binEdges[n_bins_rebinned] = myhist_total_a.edges[n_bins]
+
+    if n_bins_rebinned < 2:
+        print("Warning: Using max_binError_div_binContent = %1.2f results in a single bin !!" % max_binError_div_binContent)
+        print("         Fit of turn-on curve requires at least two bins.")
+        print("         Increasing max_binError_div_binContent parameter to %1.2f and trying again..." % (2*max_binError_div_binContent))
+        return AutoRebinAndEfficiency(hist_passed_a, hist_total_a, hist_passed_b, hist_total_b, 2*max_binError_div_binContent)
+
+    if len(hist_rebinned_binEdges) != (n_bins_rebinned + 1):
+       raise ValueError("Internal error !!")
+    ##print("AFTER rebinning:")
+    ##print("#bins = %i" % n_bins_rebinned)
+    ##print(" bin-edges = ", hist_rebinned_binEdges)
+    ##dumpHistogram("data, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[0], hists_rebinned_binErrors2[0])
+    ##dumpHistogram("data, total", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[1], hists_rebinned_binErrors2[1])
+    ##print("efficiency (data) = ", [ hists_rebinned_binContents[0][i]/hists_rebinned_binContents[1][i] for i in range(n_bins_rebinned) ])
+    ##dumpHistogram("mc, passed", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[2], hists_rebinned_binErrors2[2])
+    ##dumpHistogram("mc, total", n_bins_rebinned, hist_rebinned_binEdges, hists_rebinned_binContents[3], hists_rebinned_binErrors2[3])
+    ##print("efficiency (mc) = ", [ hists_rebinned_binContents[2][i]/hists_rebinned_binContents[3][i] for i in range(n_bins_rebinned) ])
+
+    # compute efficiency and build graph
+    graphs_a = MultiGraph(3, n_bins_rebinned)
+    graphs_b = MultiGraph(3, n_bins_rebinned)
+    for idx_bin_rebinned in range(n_bins_rebinned):
+        binEdge_low = hist_rebinned_binEdges[idx_bin_rebinned]
+        binEdge_high = hist_rebinned_binEdges[idx_bin_rebinned + 1]
+        binCenter = 0.5*(binEdge_low + binEdge_high)
+
+        for hist in [ "a", "b" ]:
+            idx_passed = None
+            idx_total = None
+            graphs = None
+            label = None
+            if hist == "a":
+                idx_passed = 0
+                idx_total = 1
+                graphs = graphs_a
+                label = "data"
+            elif hist == "b":
+                idx_passed = 2
+                idx_total = 3
+                graphs = graphs_b
+                label = "mc"
+            else:
+                continue
+       
+            binContent_passed = hists_rebinned_binContents[idx_passed][idx_bin_rebinned]
+            binError_passed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
+            ##print("%s, passed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_passed, binError_passed))
+            binContent_total = hists_rebinned_binContents[idx_total][idx_bin_rebinned]
+            binError_total = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned]))
+            ##print("%s, total (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_total, binError_total))
+            binContent_failed = max(0., hists_rebinned_binContents[idx_total][idx_bin_rebinned] - hists_rebinned_binContents[idx_passed][idx_bin_rebinned])
+            binError_failed = math.sqrt(max(0., hists_rebinned_binErrors2[idx_total][idx_bin_rebinned] - hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned]))
+            ##print("%s, failed (bin %i): bin-content = %1.2f +/- %1.2f" % (label, idx_bin_rebinned, binContent_failed, binError_failed))
+            eff = binContent_passed / binContent_total
+            if hist == "a": 
+                # data
+                eff_low, eff_high = data_eff_confint(binContent_passed, binContent_total, binError_passed, binError_total)
+                eff_low = min(eff_low, eff - 1.e-3)
+                eff_high = max(eff_high, eff + 1.e-3)
+            else: 
+                # mc
+                eff_low, eff_high = weighted_eff_confint_freqMC(binContent_passed, binContent_failed, binError_passed, binError_failed)
+            ##print("%s, eff = %1.2f + %1.2f - %1.2f" % (label, eff, eff_high - eff, eff - eff_low))
+            graphs.x[idx_bin_rebinned] = binCenter
+            graphs.x_error_low[idx_bin_rebinned] = binCenter - binEdge_low
+            graphs.x_error_high[idx_bin_rebinned] = binEdge_high - binCenter
+            graphs.y[0, idx_bin_rebinned] = binContent_passed
+            graphs.y_error_low[0, idx_bin_rebinned] = math.sqrt(hists_rebinned_binErrors2[idx_passed][idx_bin_rebinned])
+            graphs.y_error_high[0, idx_bin_rebinned] = graphs_a.y_error_low[0, idx_bin_rebinned]
+            graphs.y[1, idx_bin_rebinned] = binContent_total
+            graphs.y_error_low[1, idx_bin_rebinned] = math.sqrt(hists_rebinned_binErrors2[idx_total][idx_bin_rebinned])
+            graphs.y_error_high[1, idx_bin_rebinned] = graphs_a.y_error_low[1, idx_bin_rebinned]
+            graphs.y[2, idx_bin_rebinned] = eff
+            graphs.y_error_low[2, idx_bin_rebinned] = eff - eff_low
+            graphs.y_error_high[2, idx_bin_rebinned] = eff_high - eff
+    ##print("eff_data = ", [ graphs_a.y[2, i] for i in range(n_bins_rebinned) ])
+    ##print("eff_mc = ",   [ graphs_b.y[2, i] for i in range(n_bins_rebinned) ])
+
+    return tuple(graphs_a.ToRootGraphs(n_bins_rebinned)) + tuple(graphs_b.ToRootGraphs(n_bins_rebinned))
